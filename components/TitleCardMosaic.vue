@@ -108,6 +108,8 @@ interface Props {
   isFollowing?: boolean;
   isLiked?: boolean;
   isInWatchlist?: boolean;
+  // Recommendations already resolve tagline on the server.
+  fetchMissingTagline?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -127,6 +129,7 @@ const props = withDefaults(defineProps<Props>(), {
   isFollowing: false,
   isLiked: false,
   isInWatchlist: false,
+  fetchMissingTagline: true,
 });
 
 // Fetch tagline from TMDB if missing (only if type and tmdbId are provided)
@@ -152,8 +155,7 @@ const providersWithLogos = computed(() => {
 });
 
 onMounted(async () => {
-  // Only fetch tagline if type and tmdbId are provided
-  if (props.type && props.tmdbId) {
+  if (props.fetchMissingTagline && props.type && props.tmdbId) {
     await fetchTaglineIfMissing();
   }
 });

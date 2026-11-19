@@ -296,6 +296,8 @@ interface Props {
   showSeasonSeenButton?: boolean;
   isSeasonSeen?: boolean;
   seasonNumber?: number;
+  // Recommendations already resolve tagline on the server.
+  fetchMissingTagline?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -323,6 +325,7 @@ const props = withDefaults(defineProps<Props>(), {
   showSeasonSeenButton: false,
   isSeasonSeen: false,
   seasonNumber: undefined,
+  fetchMissingTagline: true,
 });
 
 const { routeWithLang } = useRouteWithLang();
@@ -394,8 +397,7 @@ const confirmUnmark = () => {
 };
 
 onMounted(async () => {
-  // Only fetch tagline if type is provided
-  if (props.type) {
+  if (props.fetchMissingTagline && props.type) {
     await fetchTaglineIfMissing();
   }
 });

@@ -13,6 +13,7 @@
     :vote-average="props.title.vote_average"
     :overview="props.title.overview"
     :tagline="props.title.tagline"
+    :fetch-missing-tagline="false"
     :providers="props.title.providers"
     :aria-label="$t('media.recommendationLabel', { title: props.title.title })"
     :is-following="props.title.following || false"

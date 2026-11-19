@@ -3,6 +3,7 @@
     :title="props.title.title"
     :poster-path="props.title.poster_path"
     :tagline="props.title.tagline"
+    :fetch-missing-tagline="false"
     :overview="props.title.overview"
     :show-overview="true"
     :truncate-overview="true"
