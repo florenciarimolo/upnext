@@ -91,4 +91,16 @@ The show handler now syncs missing season rows once (`syncSeasonsFromTVShow`, wh
 
 `syncSeasonsFromTVShow` can still call TMDB once per season that is missing `air_date` or `episode_count`. For `37854` that path does not run. For `95557` it still runs for one season.
 
-Production timing has not been remeasured. This change is in the repo only until it is deployed. After deploy, repeat test-plan item 6 on `37854` and `95557` with a cold `curl` and expect the document well under the previous 3.9 s and 5.7 s. The season page is unchanged and can still be slow.
+Deployed to the development alias `https://getupnext.vercel.app` in commit `1ad2e01`. Cold `curl` on 19 November 2026, `x-vercel-cache: MISS`:
+
+| URL | Before (production) | After (preview) |
+| --- | --- | --- |
+| `/en/tv-show/37854` | 3.9 s | 1.76 s (161 KB HTML) |
+| `/en/tv-show/95557` | 5.7 s | 1.74 s |
+| `/api/tmdb/tvshows/37854?lang=en` | not split out | 1.20 s |
+| `/api/tmdb/tvshows/95557?lang=en` | not split out | 1.15 s |
+| `/en/movie/687163` | 0.61 s | 0.61 s |
+
+The per-season loop is gone. What remains on the show response is the live TMDB show fetch, provider fetch, and one season read. That is about 1.2 s before Nuxt renders the HTML. The season page was not changed.
+
+Preview is behind Vercel Authentication. Measurements used a short-lived share link on the deployment.
