@@ -322,3 +322,5 @@ for (const langCode of fallbackLanguages) {
 - Many of the "duplications" identified are intentional (fallbacks, updates after actions)
 - Cache is already implemented in several places, but needed the Promise fix to work correctly
 - After fixing the serialization error, verify actual requests in the browser to confirm if there are real duplications or only theoretical ones
+
+The November 2026 production pass and the remaining page-by-page plan are in `docs/engineering/production-performance-audit.md`.
