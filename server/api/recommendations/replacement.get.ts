@@ -397,6 +397,7 @@ export default defineEventHandler(async (event) => {
         | typeof MEDIA_TYPE.TV,
       poster_path: replacementEntry.titleData.poster_path,
       overview: replacementEntry.titleData.overview || null,
+      tagline: replacementEntry.titleData.tagline || null,
       vote_average: replacementEntry.titleData.vote_average,
       genres:
         replacementEntry.genreIds.length > 0 ? replacementEntry.genreIds : null,

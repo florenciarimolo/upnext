@@ -873,6 +873,7 @@ export default defineEventHandler(async (event) => {
           type: entry.type as typeof MEDIA_TYPE.MOVIE | typeof MEDIA_TYPE.TV,
           poster_path: titleData.poster_path,
           overview: titleData.overview || null,
+          tagline: titleData.tagline || null,
           vote_average: titleData.vote_average,
           genres: entry.genreIds.length > 0 ? entry.genreIds : null,
           release_date: titleData.release_date,
