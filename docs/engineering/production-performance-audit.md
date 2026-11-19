@@ -63,7 +63,7 @@ Ordered by time removed. Items 1 and 4 match the rule that Discover and title pa
 
 1. **Cut server time on series and season documents.** A series page took 4–6 s on a cache miss while the compressed HTML was 10–24 KB. The cost is generating the page. **In progress.** See the status section. The season document (`/tv/{id}/season/{n}` plus overview fallback) is still a separate request and was 3.9 s for One Piece season 1. That path was not changed in this pass.
 2. **Stop duplicating the detail DOM.** Done on the development preview. Movie and series banners kept both layouts and now render one provider list (under the poster from `lg`, after the details below that) and one `h1`. The other title is a paragraph with `role="heading"`. Each image is a `<picture>` whose hidden breakpoint points at a 1×1 image, so the backdrop and the poster are not both downloaded. Checked on `https://getupnext.vercel.app/en/movie/687163`: HTML has one `h1` (34 KB, was 39 KB), desktop shows the poster column with platforms underneath, mobile shows the full-bleed backdrop and the platforms once, below the trailers.
-3. **Batch `fetch-tagline`.** The signed-in home fired about 20 POSTs to `/api/titles/fetch-tagline` after `/api/recommendations`. That endpoint already returns `tagline` (string or null) after resolving it on the server. Recommendation cards and list rows now set `fetchMissingTagline` to false, so they render that value and do not call the endpoint again. Discover, watchlist, lists, and the title page still fetch a missing tagline, one item at a time.
+3. **Stop the signed-in home from refetching taglines.** Done on the development preview. The home used to fire about 20 POSTs to `/api/titles/fetch-tagline` because the main recommendations payload omitted `tagline` even though `getTitleData` had already resolved it. The home and the replacement response now include that string. Recommendation cards and list rows set `fetchMissingTagline` to false, so a null tagline does not start another request. Discover, watchlist, lists, and the title page still fetch a missing tagline, one item at a time. `/api/recommendations` itself is still about 3 s; that server work is unchanged.
 4. **Render Discover on the server.** The Discover index arrives as "Loading lists…" with no `h1`. A list arrives with a generic title and an empty `h1`; the real title is set on the client. For a stable editorial page, the list name, the `h1`, and the cards belong in the HTML. Signed in, replace the 17 `user_title_status` reads with one read. Do not add recommendation ranking to these pages.
 5. **Request images at the painted size.** Discover and home posters ask for `w500` and display at about 48 px. Provider logos ask for `w300` for 48 px, and some are requested 2 or 4 times. Use `w92` or `w154` on cards and `w45` on logos. Set width and height. Home CLS was 0 on the anonymous load; keep it that way with reserved space.
 6. **Fonts.** About 450 KB of Inter across four files, plus Satoshi, with `max-age=0`. `font-display: swap` is already set. Ship one variable Inter file with the weights the UI uses, and a long cache on a versioned name. Same for Satoshi if headlines keep it.
@@ -104,3 +104,17 @@ Deployed to the development alias `https://getupnext.vercel.app` in commit `1ad2
 The per-season loop is gone. What remains on the show response is the live TMDB show fetch, provider fetch, and one season read. That is about 1.2 s before Nuxt renders the HTML. The season page was not changed.
 
 Preview is behind Vercel Authentication. Measurements used a short-lived share link on the deployment.
+
+### 3. Signed-in home — tagline included, no per-card refetch
+
+The main list in `server/api/recommendations/index.get.ts` and the replacement in `server/api/recommendations/replacement.get.ts` now set `tagline` from `titleData.tagline`. The filtered `preserve_ids` path already did. `RecommendationCard` and `RecommendationListItem` pass `fetchMissingTagline: false`.
+
+Deployed to `https://getupnext.vercel.app` in commit `e90a3ef`. Signed-in reload of `/en/` on 19 November 2026:
+
+| Check | Before | After |
+| --- | --- | --- |
+| `POST /api/titles/fetch-tagline` | about 20 | 0 |
+| Taglines on the cards | filled by those posts | 13 rendered from the recommendations payload, including "Believe in the Hail Mary." |
+| `/api/recommendations` | 2.6 s | 3.0 s |
+
+The card text comes from the payload. The recommendations request is still the slow part of the signed-in home.
