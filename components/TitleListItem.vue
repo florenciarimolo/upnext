@@ -5,6 +5,8 @@
     :tagline="tagline"
     :tag="tag"
     :overview="overview"
+    :show-overview="true"
+    :truncate-overview="true"
     :vote-average="voteAverage"
     :type="type"
     :tmdb-id="tmdbId"

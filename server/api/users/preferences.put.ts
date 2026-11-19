@@ -6,6 +6,7 @@ import { USER_PREFERENCES_COLUMNS } from '@/constants/db/columns';
 import { getUserIdFromEvent } from '@/server/utils/user-auth';
 import { createServerSupabaseClient } from '@/server/utils/supabase';
 import { devLog, logError } from '@/server/utils/logger';
+import { DEFAULT_REGION } from '@/constants/regions';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -45,21 +46,8 @@ export default defineEventHandler(async (event) => {
       );
     }
 
-    // Only update region if it's explicitly provided in the body with a valid value
-    // NEVER save null - region is mandatory and can only be changed, not cleared
-    if ('region' in body) {
-      if (
-        body.region === null ||
-        body.region === undefined ||
-        body.region === ''
-      ) {
-        // Ignore null/undefined/empty - don't update region field
-        // This preserves existing region value
-      } else if (typeof body.region === 'string' && body.region.length === 2) {
-        // Only update if it's a valid 2-character region code
-        preferences.region = body.region.toUpperCase();
-      }
-    }
+    // Catalog and providers are Spain-only. Ignore any other region sent by the client.
+    preferences.region = DEFAULT_REGION;
 
     if (
       [

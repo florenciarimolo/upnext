@@ -123,6 +123,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     tmdbApiKey: process.env.NUXT_TMDB_API_KEY || '',
     resendApiKey: process.env.RESEND_API_KEY || '',
+    resendFromEmail: process.env.RESEND_FROM_EMAIL || '',
     sentryDsn: process.env.SENTRY_DSN || '',
     public: {
       tmdbBaseUrl: process.env.NUXT_TMDB_BASE_URL || '',

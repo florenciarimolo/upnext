@@ -1,5 +1,6 @@
 import { TABLES } from '@/constants/db/tables';
 import { USER_PREFERENCES_COLUMNS } from '@/constants/db/columns';
+import { DEFAULT_REGION } from '@/constants/regions';
 import { getUserIdFromEvent } from '@/server/utils/user-auth';
 import { createServerSupabaseClient } from '@/server/utils/supabase';
 import { devLog, logError } from '@/server/utils/logger';
@@ -64,7 +65,23 @@ export default defineEventHandler(async (event) => {
       regionType: typeof data?.region,
     });
 
-    // Log the exact value being returned (development only)
+    if (data && data.region !== DEFAULT_REGION) {
+      const { error: updateError } = await supabase
+        .from(TABLES.USER_PREFERENCES)
+        .update({ [USER_PREFERENCES_COLUMNS.REGION]: DEFAULT_REGION })
+        .eq(USER_PREFERENCES_COLUMNS.USER_ID, userId);
+
+      if (updateError) {
+        logError(
+          '[Preferences] Failed to force Spain region',
+          updateError,
+          { userId }
+        );
+      } else {
+        data.region = DEFAULT_REGION;
+      }
+    }
+
     devLog('[preferences.get] Returning response:', {
       success: true,
       preferencesRegion: data?.region,

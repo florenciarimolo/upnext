@@ -36,6 +36,7 @@ import { VIEW_MODE } from '@/constants/domain/viewMode';
 import { getSession } from '@/services/auth';
 import { MEDIA_TYPE } from '@/constants/domain/mediaType';
 import { useUserRegion } from '@/composables/useUserRegion';
+import { DEFAULT_REGION } from '@/constants/regions';
 import { useRouteWithLang } from '@/composables/useRouteWithLang';
 import { useUndoToast } from '@/composables/useUndoToast';
 import Toast from '@/components/ui/Toast.vue';
@@ -60,7 +61,6 @@ const { routeWithLang, lang } = useRouteWithLang();
 // Computed routes with language prefix
 // CRITICAL: routeWithLang() accesses route.params.lang directly, ensuring reactivity
 // These computed will automatically re-evaluate when route.params.lang changes
-const preferencesRoute = computed(() => routeWithLang('/preferences'));
 const listsRoute = computed(() => routeWithLang('/lists?tab=liked'));
 
 // Safely get userStore - it may not be available immediately after Pinia initialization
@@ -567,27 +567,16 @@ const fetchUserPreferences = async () => {
           userRegion.value = regionValue;
         }
       } else {
-        // Explicitly set to null if region is not available
-        if (userRegion.value !== null) {
-          const { logWarn } = useLogger();
-          logWarn(
-            '[Home] Region is null/undefined/empty in preferences, clearing userRegion',
-            {
-              regionValue,
-              regionType: typeof regionValue,
-            }
-          );
-          userRegion.value = null;
-        }
+        userRegion.value = DEFAULT_REGION;
       }
 
-      // Load providers for region if region is available
-      if (response.preferences.region) {
-        await loadProvidersForRegion(response.preferences.region);
-      }
+      await loadProvidersForRegion(userRegion.value || DEFAULT_REGION);
 
       // Map genres and providers immediately if available
       mapPreferencesToSelections();
+    } else {
+      userRegion.value = DEFAULT_REGION;
+      await loadProvidersForRegion(DEFAULT_REGION);
     }
   } catch (error) {
     // Don't log as error if it's a timeout - it's expected and handled gracefully
@@ -735,15 +724,18 @@ watch(
           });
         }
       }
-      // Development-only logging removed
-      // Load providers for region (already done in fetchUserPreferences if region exists)
-      if (userRegion.value && availableProviders.value.length === 0) {
+      // Spain is the only content region. A missing preference must not
+      // ask the user to configure one.
+      if (!userRegion.value) {
+        userRegion.value = DEFAULT_REGION;
+      }
+      if (availableProviders.value.length === 0) {
         await loadProvidersForRegion(userRegion.value);
       }
     } catch (error) {
       const { logError } = useLogger();
       logError('[Home] Error fetching user preferences', error as Error);
-      userRegion.value = null;
+      userRegion.value = DEFAULT_REGION;
     } finally {
       preferencesPending.value = false;
       regionLoadAttempted.value = true;
@@ -838,8 +830,6 @@ const canShowContent = computed(
 );
 
 // Computed: Empty states
-const showNoRegion = computed(() => canShowContent.value && !hasRegion.value);
-
 const showNoLikes = computed(
   () => canShowContent.value && hasRegion.value && !userStore.value.hasLikes
 );
@@ -1204,7 +1194,7 @@ onMounted(() => {
                 <!-- Mosaic view skeletons -->
                 <div
                   v-if="viewMode === VIEW_MODE.MOSAIC"
-                  class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 overflow-visible"
+                  class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 overflow-visible"
                 >
                   <SkeletonMediaCard
                     v-for="i in 20"
@@ -1223,45 +1213,10 @@ onMounted(() => {
                 </div>
               </Section>
 
-              <!-- Empty State: No region -->
-              <Section v-if="showNoRegion">
-                <div class="py-6 text-center">
-                  <div class="mx-auto w-full max-w-md">
-                    <svg
-                      class="mx-auto mb-4 w-16 h-16 text-gray-600 dark:text-gray-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 002 2h2.945M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <h3
-                      class="mb-2 text-h3 font-heading font-semibold text-gray-800 dark:text-gray-300"
-                    >
-                      {{ $t('home.noRegion') }}
-                    </h3>
-                    <p
-                      class="mb-6 text-body font-body text-gray-800 dark:text-gray-300"
-                    >
-                      {{ $t('home.noRegionDescription') }}
-                    </p>
-                    <nuxt-link
-                      :to="preferencesRoute"
-                      class="inline-block px-6 py-3 text-base font-medium text-white rounded-lg border shadow-lg backdrop-blur-sm transition-all duration-300 bg-primary-800 dark:bg-primary hover:bg-primary-900 dark:hover:bg-primary-600 border-primary-600/50"
-                    >
-                      {{ $t('home.configurePreferences') }}
-                    </nuxt-link>
-                  </div>
-                </div>
-              </Section>
-
+              <!-- Results stay hidden while filters reload, so only the skeleton is visible. -->
+              <template v-if="!filtersLoading">
               <!-- Empty State: No likes -->
-              <Section v-else-if="showNoLikes">
+              <Section v-if="showNoLikes">
                 <div class="py-6 text-center">
                   <div class="mx-auto w-full max-w-md">
                     <svg
@@ -1347,6 +1302,7 @@ onMounted(() => {
                   @unfollow="handleUnfollow($event)"
                 />
               </Section>
+              </template>
             </PageContainer>
           </AppShell>
           <!-- Toast - Always available, client-only to avoid hydration issues -->

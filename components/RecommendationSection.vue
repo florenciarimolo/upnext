@@ -13,7 +13,7 @@
       <template v-if="viewMode === VIEW_MODE.MOSAIC">
         <!-- First row: full row -->
         <div
-          class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 overflow-visible"
+          class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 overflow-visible"
         >
           <SkeletonMediaCard
             v-for="i in 6"
@@ -24,7 +24,7 @@
         </div>
         <!-- Second row: only 2 cards -->
         <div
-          class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 overflow-visible"
+          class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 overflow-visible"
         >
           <SkeletonMediaCard
             v-for="i in 2"
@@ -51,7 +51,7 @@
       <!-- Mosaic view -->
       <div
         v-if="viewMode === VIEW_MODE.MOSAIC"
-        class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 overflow-visible"
+        class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 overflow-visible"
       >
         <RecommendationCard
           v-for="recommendation in recommendations"
@@ -64,13 +64,6 @@
           @mark-watchlist="$emit('mark-watchlist', $event)"
           @follow="$emit('follow', $event)"
           @unfollow="$emit('unfollow', $event)"
-        />
-        <!-- Show skeleton while fetching replacement -->
-        <SkeletonMediaCard
-          v-if="fetchingReplacement"
-          :key="'skeleton-replacement'"
-          :show-rating="true"
-          :show-watchlist="false"
         />
       </div>
       <!-- List view -->
@@ -86,12 +79,6 @@
           @mark-watchlist="$emit('mark-watchlist', $event)"
           @follow="$emit('follow', $event)"
           @unfollow="$emit('unfollow', $event)"
-        />
-        <!-- Show skeleton while fetching replacement -->
-        <SkeletonListItem
-          v-if="fetchingReplacement"
-          :key="'skeleton-replacement-list'"
-          :show-rating="true"
         />
       </div>
     </template>

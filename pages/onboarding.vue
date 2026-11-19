@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue';
+import { onMounted } from 'vue';
 import { TITLE_STATUS } from '@/constants/domain/titleStatus';
 import { MEDIA_TYPE } from '@/constants/domain/mediaType';
 import { getTitleByTmdbId } from '@/services/titles';
 import { upsertUserTitleStatus } from '@/services/userTitleStatus';
 import { getSession } from '@/services/auth';
 import { isUniqueViolationError } from '@/constants/db/errorCodes';
-import RegionSelector from '@/components/RegionSelector.vue';
 import CloseButton from '@/components/ui/CloseButton.vue';
 import Card from '@/components/ui/Card.vue';
 import Button from '@/components/ui/Button.vue';
@@ -18,7 +17,7 @@ import ProviderSelector from '@/components/ProviderSelector.vue';
 import FilterPill from '@/components/ui/FilterPill.vue';
 import Alert from '@/components/ui/Alert.vue';
 import IconTv from '@/components/icons/IconTv.vue';
-import { useRegions } from '@/composables/useRegions';
+import { DEFAULT_REGION } from '@/constants/regions';
 import { useUserStore } from '@/stores/user';
 import { useLogger } from '@/composables/useLogger';
 
@@ -117,7 +116,7 @@ const currentStep = ref<'preferences' | 'titles'>('preferences');
 const preferencesSaved = ref(false);
 
 // Preferences state
-const selectedRegion = ref<string | null>(null);
+const selectedRegion = ref<string>(DEFAULT_REGION);
 const selectedGenres = ref<Array<{ id: number; name: string }>>([]);
 
 // Selected genre for GenreSelector (temporary state for the selector)
@@ -144,20 +143,6 @@ const selectedProviderForSelector = ref<{
 } | null>(null);
 
 const savingPreferences = ref(false);
-
-// Preload regions using useAsyncData - must load before content renders
-const { pending: regionsPending } = useAsyncData(
-  'onboarding-regions',
-  async () => {
-    const { loadRegions } = useRegions();
-    await loadRegions();
-    return true; // Just ensure regions are loaded
-  },
-  {
-    server: false, // Only fetch on client
-    default: () => true,
-  }
-);
 
 // Titles state
 const searchQuery = ref('');
@@ -279,15 +264,7 @@ const loadProvidersForRegion = async (region: string) => {
   }
 };
 
-// Watch for region changes and reload providers
-watch(selectedRegion, (newRegion, oldRegion) => {
-  if (newRegion && newRegion !== oldRegion) {
-    // Clear selected providers when region changes
-    selectedProviders.value = [];
-    // Reload providers for new region
-    loadProvidersForRegion(newRegion);
-  }
-});
+loadProvidersForRegion(DEFAULT_REGION);
 
 const availableProviders = computed(() => {
   if (!providersData.value) {
@@ -358,13 +335,6 @@ const removeProvider = (providerId: number) => {
 const savePreferences = async () => {
   savingPreferences.value = true;
   error.value = null;
-
-  // Validate that region is selected (mandatory)
-  if (!selectedRegion.value) {
-    error.value = t('onboarding.regionRequired');
-    savingPreferences.value = false;
-    return;
-  }
 
   try {
     const currentUser = userStore.value.user || user.value;
@@ -624,27 +594,6 @@ const saveSelections = async () => {
 
       <!-- Step 1: Preferences -->
       <div v-if="currentStep === 'preferences'" class="space-y-6">
-        <!-- Region -->
-        <Card padding="lg">
-          <h2
-            class="text-xl font-semibold dark:text-gray-300 text-gray-800 mb-2"
-          >
-            {{ $t('preferences.content.region.title') }}
-          </h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            {{ $t('preferences.content.region.description') }}
-          </p>
-          <div
-            v-if="regionsPending"
-            class="flex items-center justify-center py-8"
-          >
-            <div
-              class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
-            ></div>
-          </div>
-          <RegionSelector v-else v-model="selectedRegion" />
-        </Card>
-
         <!-- Favorite Genres (Optional) -->
         <Card padding="lg">
           <h2
@@ -713,16 +662,7 @@ const saveSelections = async () => {
             {{ $t('preferences.content.includedProviders.description') }}
           </p>
 
-          <!-- Provider Search -->
-          <!-- IMPORTANT: Providers depend on region - only show if region is selected -->
-          <div
-            v-if="!selectedRegion"
-            class="text-sm text-gray-600 dark:text-gray-400 italic"
-          >
-            {{ $t('preferences.content.includedProviders.regionRequired') }}
-          </div>
           <ProviderSelector
-            v-else
             v-model="selectedProviderForSelector"
             :available-providers="availableProviders"
             :selected-providers="selectedProviders"

@@ -28,6 +28,16 @@
 
     <!-- Content: Overview/Tagline and Providers -->
     <template #content>
+      <h3
+        class="mb-2 text-sm font-semibold font-heading text-gray-800 dark:text-gray-300 break-words line-clamp-2"
+      >
+        <nuxt-link
+          :to="linkTo"
+          class="rounded-sm transition-colors hover:text-primary-800 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          {{ title }}
+        </nuxt-link>
+      </h3>
       <!-- Explanation slot (only for recommendations) -->
       <slot name="explanation" />
 

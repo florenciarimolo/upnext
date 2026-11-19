@@ -86,6 +86,7 @@
     "forgotPasswordSent": "Ligazón de recuperación enviada! Revisa o teu correo electrónico.",
     "signUpSuccess": "Rexistro exitoso! Revisa o teu correo para confirmar a túa conta.",
     "passwordNotValid": "O contrasinal non cumpre cos requisitos.",
+    "invalidCredentials": "O correo ou o contrasinal non son correctos.",
     "genericError": "Ocorreu un erro",
     "createAccount": "Crear conta",
     "signIn": "Iniciar sesión",
@@ -122,6 +123,35 @@
     "emailSent": "¡Enviado!",
     "sending": "Enviando...",
     "checkEmailConfirm": "Revisa o teu correo para confirmar a túa conta!",
+    "emails": {
+      "signup": {
+        "subject": "Confirma a túa conta de UpNext",
+        "preheader": "Estás a un paso de saber que ver a continuación.",
+        "headline": "Confirma o teu correo",
+        "body": "Estás a un paso de saber que ver a continuación.",
+        "button": "Confirmar correo",
+        "fallback": "Se o botón non funciona, copia esta ligazón no navegador.",
+        "footer": "Se non creaches unha conta en UpNext, podes ignorar este correo."
+      },
+      "magicLink": {
+        "subject": "A túa ligazón para entrar en UpNext",
+        "preheader": "Usa esta ligazón para volver ás túas recomendacións.",
+        "headline": "Entra en UpNext",
+        "body": "Usa esta ligazón para volver ás túas recomendacións. Caduca axiña.",
+        "button": "Entrar",
+        "fallback": "Se o botón non funciona, copia esta ligazón no navegador.",
+        "footer": "Se non pediches esta ligazón, podes ignorar este correo."
+      },
+      "recovery": {
+        "subject": "Restablece o teu contrasinal de UpNext",
+        "preheader": "Recibimos unha solicitude para cambiar o teu contrasinal.",
+        "headline": "Restablece o contrasinal",
+        "body": "Recibimos unha solicitude para cambiar o contrasinal deste correo.",
+        "button": "Restablecer contrasinal",
+        "fallback": "Se o botón non funciona, copia esta ligazón no navegador.",
+        "footer": "Se non pediches este cambio, podes ignorar este correo."
+      }
+    },
     "checkEmailRecovery": "Se existe unha conta asociada a este correo, recibirás nuns minutos unha ligazón para restablecer o teu contrasinal.",
     "checkEmailMagicLink": "Revisa o teu correo para a ligazón máxica!",
     "emailField": "Correo electrónico",
@@ -604,6 +634,7 @@
     "recaps": "Resumo",
     "videoUnofficial": "Non oficial",
     "viewDetails": "Ver detalles",
+    "seeMore": "Ver máis",
     "back": "Volver",
     "seen": "Visto",
     "liked": "Favoritos",

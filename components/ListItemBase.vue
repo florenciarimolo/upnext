@@ -154,21 +154,23 @@
             </p>
           </div>
           <!-- Overview - hidden on mobile (shown in new row below) -->
-          <p
-            v-if="showOverview && overview"
-            :class="[
-              'hidden lg:block text-xs text-gray-700 dark:text-gray-300',
-              truncateOverview ? 'line-clamp-3' : '',
-            ]"
-          >
-            {{ overview }}
-          </p>
-          <p
-            v-else-if="showOverview"
-            class="hidden lg:block text-xs italic text-gray-600 dark:text-gray-400"
-          >
-            {{ $t('media.noDescriptionAvailable') }}
-          </p>
+          <div v-if="showOverview" class="hidden lg:block">
+            <p
+              v-if="overview"
+              :class="[
+                'text-xs text-gray-700 dark:text-gray-300',
+                truncateOverview ? 'line-clamp-3' : '',
+              ]"
+            >
+              {{ overview }}
+            </p>
+            <p
+              v-else
+              class="text-xs italic text-gray-600 dark:text-gray-400"
+            >
+              {{ $t('media.noDescriptionAvailable') }}
+            </p>
+          </div>
           <!-- Providers (logos only, no names) -->
           <div
             v-if="providers && providers.length > 0"

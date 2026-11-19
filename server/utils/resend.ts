@@ -66,12 +66,18 @@ export async function sendEmail(
 ) {
   const resend = createResendClient(config);
 
-  return await resend.emails.send({
+  const result = await resend.emails.send({
     from: options.from,
     to: options.to,
     subject: options.subject,
     html: options.html,
     text: options.text,
   });
+
+  if (result.error) {
+    throw new Error(result.error.message);
+  }
+
+  return result;
 }
 

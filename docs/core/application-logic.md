@@ -810,14 +810,15 @@ CREATE TABLE recommendation_pool (
 
 **IMPORTANT: Pool regeneration only occurs when the content universe changes**
 
-The pool should **only** be regenerated when the user's **region** changes, as this defines a new universe of available content from TMDB.
+The pool should **only** be regenerated when the content universe changes.
+
+UpNext is Spain-only. The content region is fixed to `ES`. Users cannot select or change it. TMDB calls, watch providers, and the recommendation pool always use `ES`.
 
 #### Changes that trigger pool regeneration:
 
-- **Region** (`region`): Changing region defines a new content universe
-  - TMDB returns different universes per region (trending, discover, recommendations, provider availability)
-  - Pool is completely regenerated with `clearPool=true`
-  - All TMDB calls use the new region parameter
+- **Region** (`region`): A different region would define a new content universe. The product does not expose this change; region stays `ES`.
+  - TMDB returns the Spain universe (trending, discover, recommendations, provider availability)
+  - If region were changed, the pool would be regenerated with `clearPool=true`
 
 #### Changes that do NOT trigger pool regeneration:
 
@@ -999,12 +1000,13 @@ The recommendation list must always maintain exactly 20 visible recommendations.
 
 - When a title is removed via `handleTitleStatus` or `handleMarkLiked`:
   1. The title is removed from the UI immediately
-  2. A request is sent to `/api/recommendations/replacement` with:
+  2. The success toast offers Undo. Undo deletes the new status (or restores the previous one) and puts the original title back in the same position. A replacement that already arrived is removed. A replacement that has not arrived yet is discarded.
+  3. A request is sent to `/api/recommendations/replacement` with:
      - `excluded_tmdb_id`: The removed title's ID
      - `excluded_type`: The removed title's type (movie/tv)
      - `mood`: Current mood filter (if any)
      - `attention`: Current attention filter (if any)
-  3. The replacement endpoint:
+  4. The replacement endpoint:
      - Excludes the removed title and all other excluded titles (seen, not_interested, watchlist)
      - Does NOT exclude following or episode/season seen (unless series is fully seen)
      - Uses existing ranking (`score = base_score + preference_score`) as base
@@ -1016,7 +1018,7 @@ The recommendation list must always maintain exactly 20 visible recommendations.
      - Returns a replacement title:
        - Same type if no filters (to maintain balance)
        - Most relevant if filters active (any type, respecting content type filter if set)
-  4. The replacement is added to the list immediately
+  5. The replacement is inserted at the removed title's position, so the rest of the list does not shift to a new card at the end
 
 #### State Reversal and Recommendations:
 
@@ -1291,7 +1293,7 @@ Stores user preferences.
 - `user_id`: UUID UNIQUE NOT NULL - User UUID (references `profiles(id)` ON DELETE CASCADE)
 - `favorite_genres`: INTEGER[] - Array of TMDB genre IDs
 - `included_providers`: INTEGER[] - Array of TMDB provider IDs (if empty, all providers are included)
-- `region`: TEXT - ISO 3166-1 alpha-2 country code (e.g., 'ES', 'US', 'MX')
+- `region`: TEXT - Always `ES`. The catalog is Spain-only. A database trigger overwrites any other value on insert or update. If the stored region was not `ES`, that update also clears `recommendation_pool` so the next home load rebuilds it for Spain.
 - `exploration_mode`: TEXT CHECK (exploration_mode IN ('similar', 'balanced', 'surprise')) DEFAULT 'balanced' - Exploration mode
 - `prioritize_content`: TEXT CHECK (prioritize_content IN ('new', 'classics', 'top_rated')) DEFAULT 'new' - Content prioritization
 - `created_at`: TIMESTAMP WITH TIME ZONE - Creation timestamp (auto-set)
@@ -1369,9 +1371,9 @@ Stores user activity tracking for analytics and debugging.
 
 **Steps:**
 
-1. **Region Selection** (mandatory)
-   - User must select a region before continuing
-   - Region defines the content universe
+1. **Region**
+   - Not selected by the user
+   - Saved as `ES`. This is the only content universe
 
 2. **Genre Selection** (optional)
    - User can select favorite genres
@@ -1380,8 +1382,7 @@ Stores user activity tracking for analytics and debugging.
 
 3. **Provider Selection** (optional)
    - User can select included providers
-   - **Depends on region**: Providers are loaded based on selected region
-   - If region changes, providers are cleared and reloaded
+   - **Depends on region**: Providers are the ones available in Spain (`ES`)
    - Saved to `user_preferences.included_providers`
    - **NOT used during pool population** (only for runtime filtering)
 
@@ -1437,8 +1438,7 @@ Stores user activity tracking for analytics and debugging.
 
 ### 5. Pool Regeneration
 
-- The pool is automatically regenerated when:
-  - The user changes their **region** (defines new content universe)
+- The pool is automatically regenerated when the content universe would change. The region is fixed to `ES`, so users do not trigger this by changing country.
 - It can also be manually regenerated (onboarding, manual trigger)
 
 **IMPORTANT**: 
@@ -1476,8 +1476,8 @@ Stores user activity tracking for analytics and debugging.
 5. Backend applies impact of `seen` (-50) and `liked` (+30)
 6. Backend does `upsert` in `user_title_status`
 7. Backend updates score in recommendation pool (does NOT regenerate pool)
-8. Frontend removes title from recommendations (if visible) and fetches replacement
-9. Frontend shows success toast
+8. Frontend removes title from recommendations (if visible) and fetches a replacement into the same position
+9. Frontend shows success toast with Undo, which restores the title and removes the replacement
 
 **Note**: The pool is NOT regenerated. Only the score is adjusted, maintaining pool stability.
 

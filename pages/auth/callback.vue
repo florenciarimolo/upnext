@@ -132,17 +132,45 @@ const parseHashParams = (): Record<string, string> => {
   return params;
 };
 
+const RECOVERY_FLAG_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// The recovery flag is set in the browser that requested the email.
+// It identifies the flow. It does not replace the session from the link.
+const hasValidRecoveryFlag = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  const recoveryFlag = localStorage.getItem(STORAGE_KEYS.AUTH_RECOVERY);
+  if (!recoveryFlag) return false;
+
+  try {
+    const parsed = JSON.parse(recoveryFlag);
+    if (
+      parsed.value === 1 &&
+      Date.now() - parsed.ts < RECOVERY_FLAG_MAX_AGE_MS
+    ) {
+      return true;
+    }
+    localStorage.removeItem(STORAGE_KEYS.AUTH_RECOVERY);
+    return false;
+  } catch {
+    return recoveryFlag === '1';
+  }
+};
+
+const redirectToResetPassword = () => {
+  router.replace(routeWithLang('/auth/reset-password', lang.value));
+};
+
 // Helper function to redirect based on onboarding status or next parameter
 const redirectAfterAuth = async (next?: string) => {
-  // Check if we have a next parameter for recovery flow
+  // Recovery links must reach reset-password only after the session exists.
+  // The flag covers links whose redirect drops the `next` query param.
   if (
     next === '/auth/reset-password' ||
-    next?.endsWith('/auth/reset-password')
+    next?.endsWith('/auth/reset-password') ||
+    hasValidRecoveryFlag()
   ) {
-    // Recovery flow: redirect immediately to reset-password (with language)
-    // Get current language from route to ensure we use the correct language
-    const currentLang = lang.value;
-    router.replace(routeWithLang('/auth/reset-password', currentLang));
+    redirectToResetPassword();
     return;
   }
 
@@ -193,44 +221,10 @@ const redirectAfterAuth = async (next?: string) => {
 };
 
 onMounted(async () => {
-  // Check for recovery flow flag BEFORE any other logic
-  // This must be the first thing we check, even before checking session
-  if (typeof window !== 'undefined') {
-    const recoveryFlag = localStorage.getItem(STORAGE_KEYS.AUTH_RECOVERY);
-    let isRecoveryFlow = false;
-
-    if (recoveryFlag) {
-      try {
-        // New format: { value: 1, ts: timestamp }
-        const parsed = JSON.parse(recoveryFlag);
-        // Check if flag is valid (not older than 24 hours)
-        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-        if (parsed.value === 1 && Date.now() - parsed.ts < maxAge) {
-          isRecoveryFlow = true;
-        } else {
-          // Flag expired, remove it
-          localStorage.removeItem(STORAGE_KEYS.AUTH_RECOVERY);
-        }
-      } catch {
-        // Legacy format: '1' (string)
-        if (recoveryFlag === '1') {
-          isRecoveryFlow = true;
-        }
-      }
-    }
-
-    // Development-only logging removed
-
-    if (isRecoveryFlow) {
-      // NO eliminar el flag aquí - se eliminará en reset-password.vue después de cambiar la contraseña
-      loading.value = false;
-      const currentLang = lang.value;
-      router.replace(routeWithLang('/auth/reset-password', currentLang));
-      return;
-    }
-  }
-
-  // Development-only logging removed
+  // Do not redirect to reset-password before the link creates a session.
+  // In a fresh browser (incognito) there is no previous session, so leaving
+  // here drops the code or tokens from the URL and the reset page has nothing to validate.
+  // The recovery flag stays until the user logs in manually after changing the password.
 
   // Listen for PASSWORD_RECOVERY event (Supabase emits this when recovery flow completes)
   // This is the ONLY reliable way to detect recovery since Supabase ignores redirectTo
@@ -238,12 +232,9 @@ onMounted(async () => {
   // Set this up BEFORE processing the code to catch recovery events
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange((event) => {
-    // Development-only logging removed
-
-    if (event === 'PASSWORD_RECOVERY') {
-      const currentLang = lang.value;
-      router.replace(routeWithLang('/auth/reset-password', currentLang));
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY' && session) {
+      redirectToResetPassword();
     }
   });
 

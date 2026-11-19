@@ -76,8 +76,68 @@ export const useTitleActions = (
   const loadingTitles = ref<Set<number>>(new Set());
   const fetchingReplacement = ref(false);
 
-  // Helper function to fetch replacement title
-  const fetchReplacementTitle = async (title: Recommendation) => {
+  type RecommendationSwap = {
+    removedId: number;
+    index: number;
+    original: Recommendation;
+    replacementId: number | null;
+    undone: boolean;
+  };
+
+  const beginSwap = (title: Recommendation): RecommendationSwap | null => {
+    const index = allRecommendations.value.findIndex(
+      (item) => item.tmdb_id === title.tmdb_id
+    );
+    if (index === -1) return null;
+
+    const swap: RecommendationSwap = {
+      removedId: title.tmdb_id,
+      index,
+      original: { ...allRecommendations.value[index] },
+      replacementId: null,
+      undone: false,
+    };
+
+    allRecommendations.value = allRecommendations.value.filter(
+      (item) => item.tmdb_id !== title.tmdb_id
+    );
+    filterRecommendationsByType();
+    return swap;
+  };
+
+  const undoRecommendationSwap = (swap: RecommendationSwap) => {
+    if (swap.undone) return;
+    swap.undone = true;
+
+    if (swap.replacementId !== null) {
+      const replacementIndex = allRecommendations.value.findIndex(
+        (item) => item.tmdb_id === swap.replacementId
+      );
+      if (replacementIndex !== -1) {
+        const next = [...allRecommendations.value];
+        next.splice(replacementIndex, 1, swap.original);
+        allRecommendations.value = next;
+        filterRecommendationsByType();
+        return;
+      }
+    }
+
+    const alreadyVisible = allRecommendations.value.some(
+      (item) => item.tmdb_id === swap.original.tmdb_id
+    );
+    if (!alreadyVisible) {
+      const next = [...allRecommendations.value];
+      next.splice(Math.min(swap.index, next.length), 0, swap.original);
+      allRecommendations.value = next;
+      filterRecommendationsByType();
+    }
+  };
+
+  // Helper function to fetch replacement title and put it in the removed slot
+  const fetchReplacementTitle = async (
+    title: Recommendation,
+    swap: RecommendationSwap
+  ) => {
     try {
       const {
         data: { session },
@@ -120,13 +180,17 @@ export const useTitleActions = (
         }
       );
 
+      if (swap.undone) return;
+
       if (replacement) {
-        // Check if replacement already exists in recommendations to avoid duplicates
         const alreadyExists = allRecommendations.value.some(
-          (r: Recommendation) => r.tmdb_id === replacement.tmdb_id
+          (item: Recommendation) => item.tmdb_id === replacement.tmdb_id
         );
         if (!alreadyExists) {
-          allRecommendations.value.push(replacement);
+          swap.replacementId = replacement.tmdb_id;
+          const next = [...allRecommendations.value];
+          next.splice(Math.min(swap.index, next.length), 0, replacement);
+          allRecommendations.value = next;
         }
       }
       filterRecommendationsByType();
@@ -151,35 +215,18 @@ export const useTitleActions = (
     status: TitleStatusType,
     liked: boolean = false
   ) => {
+    if (loadingTitles.value.has(title.tmdb_id)) return;
     loadingTitles.value.add(title.tmdb_id);
 
-    // Store original state for rollback
-    const originalTitleIndexInAll = allRecommendations.value.findIndex(
-      (r: Recommendation) => r.tmdb_id === title.tmdb_id
-    );
-    const originalTitle =
-      originalTitleIndexInAll !== -1
-        ? { ...allRecommendations.value[originalTitleIndexInAll] }
-        : null;
-
-    // Optimistic update: Remove title immediately from UI
-    if (originalTitleIndexInAll !== -1) {
-      allRecommendations.value = allRecommendations.value.filter(
-        (r: Recommendation) => r.tmdb_id !== title.tmdb_id
-      );
-      filterRecommendationsByType();
-    }
+    const swap = beginSwap(title);
 
     try {
-      // Get current status (if any)
-      const currentStatus = originalTitle?.in_watchlist
+      const currentStatus = swap?.original.in_watchlist
         ? TITLE_STATUS.WATCHLIST
-        : null; // For recommendations, we don't track seen/not_interested in the object
+        : null;
 
-      // Get title with alphabet detection
       const titleWithDetection = await getTitleWithAlphabetDetection(title);
 
-      // Use unified composable for API call and toast
       const result = await executeAction(
         {
           tmdb_id: title.tmdb_id,
@@ -187,34 +234,21 @@ export const useTitleActions = (
           title: titleWithDetection,
           currentStatus,
           isLiked: liked,
+          undoOnAdd: true,
+          onUndoComplete: swap
+            ? () => undoRecommendationSwap(swap)
+            : undefined,
         },
         status
       );
 
-      if (result.success) {
-        // Get replacement title
-        await fetchReplacementTitle(title);
-      } else {
-        // API call failed, restore title to original position
-        if (originalTitle && originalTitleIndexInAll !== -1) {
-          allRecommendations.value.splice(
-            originalTitleIndexInAll,
-            0,
-            originalTitle
-          );
-          filterRecommendationsByType();
-        }
+      if (result.success && swap && !swap.undone) {
+        await fetchReplacementTitle(title, swap);
+      } else if (!result.success && swap) {
+        undoRecommendationSwap(swap);
       }
     } catch (error) {
-      // Rollback optimistic update if error occurred
-      if (originalTitle && originalTitleIndexInAll !== -1) {
-        allRecommendations.value.splice(
-          originalTitleIndexInAll,
-          0,
-          originalTitle
-        );
-        filterRecommendationsByType();
-      }
+      if (swap) undoRecommendationSwap(swap);
 
       const { logError } = useLogger();
       logError('[TitleActions] Error handling title status', error as Error, {
@@ -228,69 +262,35 @@ export const useTitleActions = (
 
   // Handle marking as liked (implies seen, removes from watchlist)
   const handleMarkLiked = async (title: Recommendation) => {
+    if (loadingTitles.value.has(title.tmdb_id)) return;
     loadingTitles.value.add(title.tmdb_id);
 
-    // Store original state for rollback
-    const originalTitleIndexInAll = allRecommendations.value.findIndex(
-      (r: Recommendation) => r.tmdb_id === title.tmdb_id
-    );
-    const originalTitle =
-      originalTitleIndexInAll !== -1
-        ? { ...allRecommendations.value[originalTitleIndexInAll] }
-        : null;
-
-    // Optimistic update: Remove title immediately from UI
-    if (originalTitleIndexInAll !== -1) {
-      allRecommendations.value = allRecommendations.value.filter(
-        (r: Recommendation) => r.tmdb_id !== title.tmdb_id
-      );
-      filterRecommendationsByType();
-    }
+    const swap = beginSwap(title);
 
     try {
       const userId = getUserId(user.value);
       if (!userId) {
-        // Restore title if no user
-        if (originalTitle && originalTitleIndexInAll !== -1) {
-          allRecommendations.value.splice(
-            originalTitleIndexInAll,
-            0,
-            originalTitle
-          );
-          filterRecommendationsByType();
-        }
+        if (swap) undoRecommendationSwap(swap);
         return;
       }
 
-      // Check if title is already liked
       const { data: likedTitle } = await getUserLikedTitle(
         userId,
         title.tmdb_id
       );
 
       if (likedTitle) {
-        // Title is already liked, restore and remove it
-        if (originalTitle && originalTitleIndexInAll !== -1) {
-          allRecommendations.value.splice(
-            originalTitleIndexInAll,
-            0,
-            originalTitle
-          );
-          filterRecommendationsByType();
-        }
+        if (swap) undoRecommendationSwap(swap);
         await confirmRemoveLike(title);
         return;
       }
 
-      // Get current status (if any)
-      const currentStatus = originalTitle?.in_watchlist
+      const currentStatus = swap?.original.in_watchlist
         ? TITLE_STATUS.WATCHLIST
         : null;
 
-      // Get title with alphabet detection
       const titleWithDetection = await getTitleWithAlphabetDetection(title);
 
-      // Use unified composable for API call and toast
       const result = await executeLikedAction(
         {
           tmdb_id: title.tmdb_id,
@@ -298,34 +298,21 @@ export const useTitleActions = (
           title: titleWithDetection,
           currentStatus,
           isLiked: false,
+          undoOnAdd: true,
+          onUndoComplete: swap
+            ? () => undoRecommendationSwap(swap)
+            : undefined,
         },
         false
       );
 
-      if (result.success) {
-        // Get replacement title
-        await fetchReplacementTitle(title);
-      } else {
-        // API call failed, restore title to original position
-        if (originalTitle && originalTitleIndexInAll !== -1) {
-          allRecommendations.value.splice(
-            originalTitleIndexInAll,
-            0,
-            originalTitle
-          );
-          filterRecommendationsByType();
-        }
+      if (result.success && swap && !swap.undone) {
+        await fetchReplacementTitle(title, swap);
+      } else if (!result.success && swap) {
+        undoRecommendationSwap(swap);
       }
     } catch (error) {
-      // Rollback optimistic update if error occurred
-      if (originalTitle && originalTitleIndexInAll !== -1) {
-        allRecommendations.value.splice(
-          originalTitleIndexInAll,
-          0,
-          originalTitle
-        );
-        filterRecommendationsByType();
-      }
+      if (swap) undoRecommendationSwap(swap);
 
       const { logError } = useLogger();
       logError('[TitleActions] Error marking title as liked', error as Error, {

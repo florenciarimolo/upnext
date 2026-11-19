@@ -269,7 +269,6 @@ import { useHreflang } from '@/composables/useHreflang';
 import { useCanonical } from '@/composables/useCanonical';
 import { useSeasonKeywords } from '@/composables/useSeoKeywords';
 import { useEpisodeStatus } from '@/composables/useEpisodeStatus';
-import { getSession } from '@/services/auth';
 import { useLogger } from '@/composables/useLogger';
 import { useUndoToast } from '@/composables/useUndoToast';
 import { useSupabaseUser } from '#imports';
@@ -500,11 +499,8 @@ const handleToggleEpisodeSeen = async (
 ) => {
   const { logError } = useLogger();
   try {
-    const {
-      data: { session },
-    } = await getSession();
-
-    if (!session?.access_token) {
+    if (!user.value) {
+      showToast(t('media.authRequired'), null, 3000);
       return;
     }
 
@@ -536,35 +532,7 @@ const handleMarkSeasonSeen = async () => {
       return;
     }
 
-    // Check if user is authenticated using useSupabaseUser (reactive, no getSession call)
     if (!user.value) {
-      showToast(t('media.authRequired'), null, 3000);
-      return;
-    }
-
-    // Get session with timeout to prevent hanging
-    const getSessionPromise = getSession();
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('getSession timeout after 5s')), 5000);
-    });
-    
-    let sessionResult;
-    try {
-      sessionResult = await Promise.race([getSessionPromise, timeoutPromise]);
-    } catch (error) {
-      const { logWarn } = useLogger();
-      logWarn('[SeasonPage] getSession timeout or error', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      showToast(t('home.errorUpdatingStatus', { title: t('episodes.seasonMarkAsSeen', { season: seasonWithProviders.value?.season_number || 1 }) }), null, 3000);
-      return;
-    }
-    
-    const {
-      data: { session },
-    } = sessionResult as Awaited<ReturnType<typeof getSession>>;
-
-    if (!session?.access_token) {
       showToast(t('media.authRequired'), null, 3000);
       return;
     }
@@ -603,12 +571,7 @@ const handleUnmarkSeason = async () => {
   try {
     if (!seasonWithProviders.value) return;
 
-    // Check if user is authenticated
-    const {
-      data: { session },
-    } = await getSession();
-
-    if (!session?.access_token) {
+    if (!user.value) {
       showToast(t('media.authRequired'), null, 3000);
       return;
     }
@@ -641,11 +604,7 @@ onMounted(async () => {
   // Get user region for date formatting
   userRegion.value = await getUserRegion();
 
-  // Fetch episode statuses if user is authenticated
-  const {
-    data: { session },
-  } = await getSession();
-  if (session?.access_token) {
+  if (user.value) {
     await fetchEpisodeStatuses();
   }
 });

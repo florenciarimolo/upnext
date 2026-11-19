@@ -2,54 +2,27 @@ import type { H3Event } from 'h3';
 import { getRequestURL, getRequestHeader, getQuery } from 'h3';
 import { LanguageCode, toTMDBLanguageCode } from '@/constants/languages';
 import { extractLangFromPath } from '@/composables/useRouteWithLang';
-import { getUserIdFromEvent } from '@/server/utils/user-auth';
-import { getUserPreferencesServer } from '@/server/utils/user-preferences';
 import { DEFAULT_REGION } from '@/constants/regions';
 
 /**
- * Get user's language and region preferences for TMDB API calls by userId
- * Returns default values if preferences not set
+ * Get language and region for TMDB API calls by userId.
+ * Language falls back to Spanish. Region is always Spain.
  */
 export async function getUserTMDBParamsByUserId(userId: string): Promise<{
   language: string;
   region: string;
 }> {
-  const defaults = {
+  // Region does not vary by user. The id is kept so existing callers stay valid.
+  return {
     language: LanguageCode.SPANISH,
-    region: DEFAULT_REGION,
+    region: userId ? DEFAULT_REGION : DEFAULT_REGION,
   };
-
-  try {
-    // Get region from user_preferences table (same source as preferences endpoint)
-    const preferencesResult = await getUserPreferencesServer(userId);
-
-    // Language is always from URL, not from database or cookies
-    // This function should not be used for language, but we return default for compatibility
-    const language = defaults.language;
-
-    // Priority: user_preferences.region > default
-    let region = defaults.region;
-    if (preferencesResult.data?.region) {
-      region = String(preferencesResult.data.region);
-    }
-
-    return {
-      language,
-      region,
-    };
-  } catch (error) {
-    // If any error occurs, return defaults
-    const { logError } = await import('@/server/utils/logger');
-    logError('[UserTMDB] Error getting user TMDB params', error as Error);
-    return defaults;
-  }
 }
 
 /**
  * Get user's language and region preferences for TMDB API calls from event
  * Language is read from URL (route.params.lang), NOT from cookies or database
- * Region is read from database (user_preferences.region)
- * Returns default values if user is not authenticated or preferences not set
+ * Region is always Spain (ES), regardless of any stored preference.
  *
  * Results are cached per request to avoid duplicate processing
  */
@@ -163,39 +136,9 @@ export async function getUserTMDBParams(event?: H3Event): Promise<{
       language = defaults.language;
     }
 
-    // Get region from database (user_preferences table - same source as /api/users/preferences)
-    // Use the SAME function as preferences.get.ts to get userId (ensures consistency)
-    let region = defaults.region;
-    const userId = await getUserIdFromEvent(event);
-
-    // If we have a userId, fetch region from database (same source as preferences endpoint)
-    if (userId) {
-      try {
-        // Get region from user_preferences table (same source as preferences endpoint)
-        const preferencesResult = await getUserPreferencesServer(userId);
-
-        // IMPORTANT: Only use region from DB if it's a valid non-null value
-        // If region is null in DB, we should return null (not default), to match preferences.get.ts behavior
-        // However, for TMDB API calls, we need a valid region, so we use default as fallback
-        // This is a difference: preferences.get.ts returns null, but getUserTMDBParams needs a valid region for API calls
-        if (
-          preferencesResult.data?.region &&
-          preferencesResult.data.region !== null
-        ) {
-          region = String(preferencesResult.data.region);
-        }
-      } catch (error) {
-        // If error fetching preferences, use default region
-        const { logError } = await import('@/server/utils/logger');
-        logError('[UserTMDB] Error fetching preferences', error as Error, {
-          userId,
-        });
-      }
-    }
-
     const result = {
       language,
-      region,
+      region: DEFAULT_REGION,
     };
 
     // Cache result for this request

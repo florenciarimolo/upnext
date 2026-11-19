@@ -4,6 +4,8 @@
     :poster-path="props.title.poster_path"
     :tagline="props.title.tagline"
     :overview="props.title.overview"
+    :show-overview="true"
+    :truncate-overview="true"
     :vote-average="props.title.vote_average"
     :type="props.title.type"
     :tmdb-id="props.title.tmdb_id"
@@ -11,7 +13,6 @@
     :aria-label="$t('media.recommendationLabel', { title: props.title.title })"
     :link-aria-label="$t('media.viewDetailsOf', { title: props.title.title })"
     :image-alt="$t('media.posterOf', { title: props.title.title })"
-    :show-overview="false"
     :no-image-aria-label="
       $t('media.noPosterAvailableFor', { title: props.title.title })
     "

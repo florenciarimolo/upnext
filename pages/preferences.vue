@@ -19,22 +19,6 @@
 
           <!-- Content Preferences -->
           <div class="space-y-6">
-            <!-- Region -->
-            <Card padding="lg">
-              <h2
-                class="mb-2 text-xl font-semibold text-gray-800 dark:text-gray-300"
-              >
-                {{ $t('preferences.content.region.title') }}
-              </h2>
-              <p class="mb-6 text-sm text-gray-600 dark:text-gray-400">
-                {{ $t('preferences.content.region.description') }}
-              </p>
-              <RegionSelector
-                v-model="contentPreferences.region"
-                @update:model-value="handleRegionChange"
-              />
-            </Card>
-
             <!-- Included Providers -->
             <Card padding="lg">
               <h2
@@ -455,7 +439,7 @@ import Card from '@/components/ui/Card.vue';
 import { MEDIA_TYPE } from '@/constants/domain/mediaType';
 import { getSession } from '@/services/auth';
 import Toast from '@/components/ui/Toast.vue';
-import RegionSelector from '@/components/RegionSelector.vue';
+import { DEFAULT_REGION } from '@/constants/regions';
 import GenreSelector from '@/components/GenreSelector.vue';
 import ProviderSelector from '@/components/ProviderSelector.vue';
 import FilterPill from '@/components/ui/FilterPill.vue';
@@ -498,10 +482,6 @@ const savedSelectedProviders = ref<
     logo_path: string | null;
   }>
 >([]);
-// Flag to track if a provider was selected after region change
-// This prevents clearing providers if user has already selected new ones
-const providerSelectedAfterRegionChange = ref(false);
-
 const userId = computed(() => {
   return currentUser.value?.id || (currentUser.value as { sub?: string })?.sub;
 });
@@ -521,7 +501,7 @@ const contentPreferences = ref<{
 }>({
   favorite_genres: [],
   included_providers: [],
-  region: undefined,
+  region: DEFAULT_REGION,
   exploration_mode: undefined,
   prioritize_content: undefined,
 });
@@ -575,28 +555,6 @@ const { data: providersData } = useAsyncData(
     default: () => ({ results: [] }),
   }
 );
-
-// Wrapper to refresh providers with current region and language
-const refreshProviders = async () => {
-  // Manually fetch with current region and language since useAsyncData doesn't react to contentPreferences changes
-  const region = contentPreferences.value.region;
-  const language = getAppLanguage();
-  const response = await $fetch<{
-    results: Array<{
-      provider_id: number;
-      provider_name: string;
-      logo_path: string | null;
-    }>;
-  }>('/api/tmdb/watch-providers', {
-    query: {
-      ...(region ? { region } : {}),
-      ...(language ? { language } : {}),
-    },
-  });
-
-  // Update the data directly
-  providersData.value = response;
-};
 
 const availableProviders = computed(() => {
   if (!providersData.value) {
@@ -669,19 +627,10 @@ const fetchContentPreferences = async () => {
     });
 
     if (response.success && response.preferences) {
-      // Ensure region is always a valid string (never null or undefined)
-      // If region is null/undefined in DB, it means user needs to set it (shouldn't happen after onboarding)
-      const region =
-        response.preferences.region &&
-        typeof response.preferences.region === 'string' &&
-        response.preferences.region.length === 2
-          ? response.preferences.region
-          : undefined;
-
       contentPreferences.value = {
         favorite_genres: response.preferences.favorite_genres || [],
         included_providers: response.preferences.included_providers || [],
-        region,
+        region: DEFAULT_REGION,
         exploration_mode: response.preferences.exploration_mode || undefined,
         prioritize_content:
           response.preferences.prioritize_content || undefined,
@@ -739,8 +688,6 @@ const fetchContentPreferences = async () => {
       savedSelectedGenres.value = [...selectedGenres.value];
       savedSelectedProviders.value = [...selectedProviders.value];
       hasUnsavedContentChanges.value = false;
-      // Reset flag when preferences are loaded
-      providerSelectedAfterRegionChange.value = false;
     } else {
       // No preferences found, reset to empty
       selectedGenres.value = [];
@@ -748,7 +695,7 @@ const fetchContentPreferences = async () => {
       contentPreferences.value = {
         favorite_genres: [],
         included_providers: [],
-        region: undefined,
+        region: DEFAULT_REGION,
       };
     }
   } catch (error) {
@@ -779,9 +726,6 @@ const addProvider = (provider: {
   contentPreferences.value.included_providers = selectedProviders.value.map(
     (p) => p.provider_id
   );
-  // Mark that user has selected a provider after region change
-  // This prevents clearing providers on subsequent region changes
-  providerSelectedAfterRegionChange.value = true;
   markContentPreferencesChanged();
 };
 
@@ -822,29 +766,6 @@ const removeGenre = (genreId: number) => {
     (g) => g.id
   );
   markContentPreferencesChanged();
-};
-
-// Handle region change
-// IMPORTANT: Changing region requires regenerating the pool (new universe)
-const handleRegionChange = async () => {
-  // Clear selected providers since they may not be available in the new region
-  // Rule: Always clear providers on region change, unless user has already
-  // selected new providers after this specific region change
-  if (!providerSelectedAfterRegionChange.value) {
-    selectedProviders.value = [];
-    contentPreferences.value.included_providers = [];
-  }
-
-  // Reset flag for the new region change - user hasn't selected providers yet
-  providerSelectedAfterRegionChange.value = false;
-
-  // Refresh providers for the new region
-  await refreshProviders();
-
-  markContentPreferencesChanged();
-
-  // Note: populate-pool will be called when saving if region changed
-  // This ensures the pool is regenerated with the new region
 };
 
 // Mark content preferences as changed - compares current state with saved state
@@ -1071,8 +992,6 @@ const confirmSaveContentPreferences = async () => {
       // Update saved selected items for potential rollback
       savedSelectedGenres.value = [...selectedGenres.value];
       savedSelectedProviders.value = [...selectedProviders.value];
-      // Reset flag after successful save
-      providerSelectedAfterRegionChange.value = false;
     } else {
       throw new Error('Failed to save preferences');
     }

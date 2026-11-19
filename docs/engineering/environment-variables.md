@@ -107,17 +107,21 @@ NUXT_TMDB_BASE_URL=https://api.themoviedb.org/3
 
 ---
 
-### 6. Resend (Email service - Server-only)
+### 6. Hostinger SMTP (Auth email - Server-only)
+
+Signup confirmation, magic link, and password recovery are sent through the `hello@getupnext.io` mailbox. The visible From header is `UpNext <hello@getupnext.io>`.
 
 ```env
-# Resend API Key (Server only, NEVER in client)
-# Used for sending transactional emails
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Hostinger mailbox (Server only, NEVER in client)
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_USER=hello@getupnext.io
+SMTP_PASSWORD=your_mailbox_password
 ```
 
-**Used by**: `server/utils/resend.ts` for sending emails.
+**Used by**: `server/utils/smtp.ts` and `server/api/auth/email.post.ts`.
 
-**Note**: Optional, only needed if using email features.
+**Note**: `SMTP_HOST` and `SMTP_PORT` default to `smtp.hostinger.com` and `465`. The From address is `SMTP_USER`. Hostinger rejects mail sent as a different address.
 
 ---
 
@@ -157,9 +161,12 @@ NUXT_TMDB_API_KEY=your_tmdb_api_key
 NUXT_TMDB_BASE_URL=https://api.themoviedb.org/3
 
 # ============================================================================
-# RESEND (Email service - Server-only)
+# HOSTINGER SMTP (Auth email - Server-only)
 # ============================================================================
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_USER=hello@getupnext.io
+SMTP_PASSWORD=your_mailbox_password
 ```
 
 ---
@@ -187,8 +194,10 @@ RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    - `NUXT_TMDB_API_KEY` ✅
    - `NUXT_TMDB_BASE_URL` (optional, has default) ✅
 
-6. **Resend**:
-   - `RESEND_API_KEY` (optional, only if using email features) ✅
+6. **Hostinger SMTP**:
+   - `SMTP_USER` ✅ (`hello@getupnext.io`; the From header is `UpNext <SMTP_USER>`)
+   - `SMTP_PASSWORD` ✅
+   - `SMTP_HOST` and `SMTP_PORT` (optional; default `smtp.hostinger.com` and `465`)
 
 ---
 
@@ -210,9 +219,9 @@ RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   - ✅ Server-only (has `NUXT_` prefix, not `NUXT_PUBLIC_`)
   - ❌ NEVER expose it in the client
 
-- **`RESEND_API_KEY`**:
-  - ✅ Use it ONLY on the server (`server/api/*`, `server/utils/*`)
-  - ❌ NEVER expose it in the client
+- **`SMTP_USER`** and **`SMTP_PASSWORD`**:
+  - ✅ Use them ONLY on the server (`server/api/*`, `server/utils/*`)
+  - ❌ NEVER expose the mailbox password in the client
 
 ### Variables that are safe for client:
 
@@ -258,8 +267,8 @@ After setting up your environment variables, verify they're working:
 ### TMDB
 - ✅ Check that movie/series data loads correctly
 
-### Resend (if configured)
-- ✅ Check that emails are sent successfully
+### Hostinger SMTP
+- ✅ Check that signup, magic link, and password recovery emails arrive from `UpNext <hello@getupnext.io>`
 
 ---
 

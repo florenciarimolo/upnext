@@ -131,7 +131,16 @@ const handlePasswordAuth = async () => {
     }
 
     if (result.error) {
-      error.value = result.error.message;
+      const errorMessage = result.error.message || '';
+      const errorCode = (result.error as { code?: string }).code || '';
+      if (
+        errorCode === 'invalid_credentials' ||
+        errorMessage === 'Invalid login credentials'
+      ) {
+        error.value = t('auth.invalidCredentials');
+      } else {
+        error.value = errorMessage;
+      }
       return;
     }
 

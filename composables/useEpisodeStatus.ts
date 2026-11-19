@@ -4,7 +4,6 @@
  */
 
 import { ref, computed, type Ref } from 'vue';
-import { getSession } from '@/services/auth';
 import { useLogger } from '@/composables/useLogger';
 
 /**
@@ -24,6 +23,18 @@ export const useEpisodeStatus = (
     typeof tmdbSeriesId === 'number' ? tmdbSeriesId : tmdbSeriesId.value
   );
 
+  // useSupabaseSession reads the cookie session. getSession() can wait forever
+  // on the auth lock, which made the season button look like it did nothing.
+  const sessionState = useSupabaseSession();
+
+  const getAccessToken = (): string => {
+    const token = sessionState.value?.access_token;
+    if (!token) {
+      throw new Error('Unauthorized');
+    }
+    return token;
+  };
+
   /**
    * Get episode statuses for the series
    */
@@ -32,11 +43,8 @@ export const useEpisodeStatus = (
       isLoading.value = true;
       error.value = null;
 
-      const {
-        data: { session },
-      } = await getSession();
-
-      if (!session?.access_token) {
+      const token = sessionState.value?.access_token;
+      if (!token) {
         episodeStatuses.value = new Map();
         return;
       }
@@ -49,7 +57,7 @@ export const useEpisodeStatus = (
       }>('/api/users/episode-status', {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         query: {
           tmdb_series_id: tmdbSeriesIdRef.value,
@@ -99,18 +107,12 @@ export const useEpisodeStatus = (
       isLoading.value = true;
       error.value = null;
 
-      const {
-        data: { session },
-      } = await getSession();
-
-      if (!session?.access_token) {
-        throw new Error('Unauthorized');
-      }
+      const token = getAccessToken();
 
       await $fetch('/api/users/episode-status', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: {
           tmdb_series_id: tmdbSeriesIdRef.value,
@@ -146,18 +148,12 @@ export const useEpisodeStatus = (
       isLoading.value = true;
       error.value = null;
 
-      const {
-        data: { session },
-      } = await getSession();
-
-      if (!session?.access_token) {
-        throw new Error('Unauthorized');
-      }
+      const token = getAccessToken();
 
       await $fetch('/api/users/episode-status', {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         query: {
           tmdb_series_id: tmdbSeriesIdRef.value,
@@ -190,31 +186,12 @@ export const useEpisodeStatus = (
       isLoading.value = true;
       error.value = null;
 
-      // Get session with timeout to prevent hanging
-      const getSessionPromise = getSession();
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('getSession timeout after 5s')), 5000);
-      });
-      
-      let sessionResult;
-      try {
-        sessionResult = await Promise.race([getSessionPromise, timeoutPromise]);
-      } catch {
-        throw new Error('Session timeout - please try again');
-      }
-      
-      const {
-        data: { session },
-      } = sessionResult as Awaited<ReturnType<typeof getSession>>;
-
-      if (!session?.access_token) {
-        throw new Error('Unauthorized');
-      }
+      const token = getAccessToken();
 
       await $fetch('/api/users/season-status', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: {
           tmdb_series_id: tmdbSeriesIdRef.value,
@@ -244,18 +221,12 @@ export const useEpisodeStatus = (
       isLoading.value = true;
       error.value = null;
 
-      const {
-        data: { session },
-      } = await getSession();
-
-      if (!session?.access_token) {
-        throw new Error('Unauthorized');
-      }
+      const token = getAccessToken();
 
       await $fetch('/api/users/season-status', {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         query: {
           tmdb_series_id: tmdbSeriesIdRef.value,

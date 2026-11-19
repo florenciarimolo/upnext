@@ -1,6 +1,7 @@
 import { readonly } from 'vue';
 import { validatePassword } from '@/utils/passwordValidation';
 import { STORAGE_KEYS } from '@/constants/storage/keys';
+import { AUTH_EMAIL_TYPE, type AuthEmailType } from '@/constants/domain/authEmail';
 import { useLogger } from '@/composables/useLogger';
 import { getCurrentLangUrlCode } from '@/composables/useRouteWithLang';
 
@@ -8,25 +9,45 @@ import { getCurrentLangUrlCode } from '@/composables/useRouteWithLang';
  * Authentication composable for UpNext
  * Handles email/password and magic link authentication via Supabase
  */
+function toAuthEmailError(error: unknown): Error & { code?: string } {
+  const data =
+    error &&
+    typeof error === 'object' &&
+    'data' in error &&
+    error.data &&
+    typeof error.data === 'object'
+      ? (error.data as { message?: string; code?: string })
+      : undefined;
+  const authError = new Error(data?.message || 'Unknown error') as Error & {
+    code?: string;
+  };
+  authError.code = data?.code;
+  return authError;
+}
+
 export const useAuth = () => {
   const supabase = useSupabaseClient();
   const user = useSupabaseUser();
   const router = useRouter();
   const route = useRoute();
-  const config = useRuntimeConfig();
   const { routeWithLang } = useRouteWithLang();
 
-  /**
-   * Get auth redirect URL with language
-   * @param lang - Language URL code (e.g., 'es', 'en')
-   * @returns Full redirect URL with language prefix
-   */
-  const getAuthRedirectUrl = (lang: string): string => {
-    // CRITICAL: Remove trailing slash from baseUrl to prevent // when concatenating
-    // Result: baseUrl (no trailing /) + "/" + lang + "/auth/callback" = clean URL
-    // Example: "https://example.com" + "/es/auth/callback" = "https://example.com/es/auth/callback" ✅
-    const baseUrl = config.public.baseUrl.replace(/\/$/, '');
-    return `${baseUrl}/${lang}/auth/callback`;
+  const requestAuthEmail = async (body: {
+    type: AuthEmailType;
+    email: string;
+    lang: string;
+    password?: string;
+    displayName?: string | null;
+  }) => {
+    try {
+      await $fetch('/api/auth/email', {
+        method: 'POST',
+        body,
+      });
+      return { data: { sent: true }, error: null };
+    } catch (error: unknown) {
+      return { data: null, error: toAuthEmailError(error) };
+    }
   };
 
   /**
@@ -49,37 +70,16 @@ export const useAuth = () => {
 
       // Get current language from URL (with fallback to extract from path)
       const lang = getCurrentLangUrlCode(route);
-      const redirectUrl = getAuthRedirectUrl(lang);
 
-      // Development-only logging removed
-
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await requestAuthEmail({
+        type: AUTH_EMAIL_TYPE.SIGNUP,
         email,
         password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            display_name: displayName || null,
-          },
-        },
+        lang,
+        displayName: displayName || null,
       });
 
       if (error) throw error;
-
-      // If user is created and displayName is provided, update profile
-      if (data.user && displayName) {
-        // Wait a bit for the trigger to create the profile
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Update profile with display_name
-        const userId = data.user.id || (data.user as { sub?: string }).sub;
-        if (userId) {
-          const { updateProfile } = await import('@/services/profiles');
-          await updateProfile(userId, {
-            display_name: displayName,
-          });
-        }
-      }
 
       return { data, error: null };
     } catch (error: unknown) {
@@ -122,15 +122,11 @@ export const useAuth = () => {
     try {
       // Get current language from URL (with fallback to extract from path)
       const lang = getCurrentLangUrlCode(route);
-      const redirectUrl = getAuthRedirectUrl(lang);
 
-      // Development-only logging removed
-
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await requestAuthEmail({
+        type: AUTH_EMAIL_TYPE.MAGIC_LINK,
         email,
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
+        lang,
       });
 
       if (error) throw error;
@@ -152,16 +148,12 @@ export const useAuth = () => {
   const resetPassword = async (email: string) => {
     // Get current language from URL (with fallback to extract from path)
     const lang = getCurrentLangUrlCode(route);
-    // Redirect to callback with next parameter so callback can handle recovery flow
-    // Use getAuthRedirectUrl as base and add the next query parameter
-    const baseRedirectUrl = getAuthRedirectUrl(lang);
-    const redirectUrl = `${baseRedirectUrl}?next=/${lang}/auth/reset-password`;
-
-    // Development-only logging removed
 
     try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
+      const { data, error } = await requestAuthEmail({
+        type: AUTH_EMAIL_TYPE.RECOVERY,
+        email,
+        lang,
       });
 
       // Set recovery flag in localStorage to detect recovery flow in callback

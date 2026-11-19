@@ -6,7 +6,7 @@
       type="button"
       :aria-label="$t('viewMode.mosaic')"
       :class="[
-        'flex items-center justify-center p-2 rounded-3xl transition-colors',
+        'flex items-center justify-center p-2 rounded-3xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         isMosaicView
           ? 'bg-primary-800 text-white dark:bg-primary'
           : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700',
@@ -19,7 +19,7 @@
       type="button"
       :aria-label="$t('viewMode.list')"
       :class="[
-        'flex items-center justify-center p-2 rounded-3xl transition-colors',
+        'flex items-center justify-center p-2 rounded-3xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         isListView
           ? 'bg-primary-800 text-white dark:bg-primary'
           : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700',
@@ -33,15 +33,21 @@
 
 <script setup lang="ts">
 import { useViewMode } from '@/composables/useViewMode';
-import { VIEW_MODE } from '@/constants/domain/viewMode';
+import { VIEW_MODE, type ViewMode } from '@/constants/domain/viewMode';
 import IconGrid from '@/components/icons/IconGrid.vue';
 import IconList from '@/components/icons/IconList.vue';
 
 interface Props {
   pageKey: string;
+  defaultMode?: ViewMode;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  defaultMode: VIEW_MODE.LIST,
+});
 
-const { setViewMode, isListView, isMosaicView } = useViewMode(props.pageKey);
+const { setViewMode, isListView, isMosaicView } = useViewMode(
+  props.pageKey,
+  props.defaultMode
+);
 </script>

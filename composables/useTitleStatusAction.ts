@@ -17,6 +17,7 @@ export interface TitleStatusActionParams {
   isLiked?: boolean;
   onUndoComplete?: () => Promise<void> | void; // Optional callback after undo completes
   hideViewListButton?: boolean; // If true, don't show "View list" button for add actions (e.g., when already on that list page)
+  undoOnAdd?: boolean; // Show Undo instead of "View list" when adding a status
 }
 
 export interface TitleStatusActionResult {
@@ -52,6 +53,7 @@ export const useTitleStatusAction = () => {
       isLiked = false,
       onUndoComplete,
       hideViewListButton = false,
+      undoOnAdd = false,
     } = params;
 
     try {
@@ -167,19 +169,30 @@ export const useTitleStatusAction = () => {
           [TITLE_STATUS.WATCHLIST]: t('home.viewList'),
         };
 
-        // If hideViewListButton is true, don't show the button (e.g., when already on that list page)
         showToast(
           addMessages[targetStatus],
-          hideViewListButton
-            ? null
-            : {
-                label: viewLabels[targetStatus],
+          undoOnAdd
+            ? {
+                label: t('undo.undo'),
                 variant: 'secondary',
-                action: async () => {
-                  await navigateTo(routeWithLang(viewRoutes[targetStatus]));
+                action: () =>
+                  undoAddedStatus({
+                    tmdbId: tmdb_id,
+                    type,
+                    previousStatus: currentStatus ?? null,
+                    onUndoComplete,
+                  }),
+              }
+            : hideViewListButton
+              ? null
+              : {
+                  label: viewLabels[targetStatus],
+                  variant: 'secondary',
+                  action: async () => {
+                    await navigateTo(routeWithLang(viewRoutes[targetStatus]));
+                  },
                 },
-              },
-          5000
+          undoOnAdd ? 7000 : 5000
         );
 
         return { success: true, action: 'added', newStatus: targetStatus };
@@ -238,6 +251,7 @@ export const useTitleStatusAction = () => {
       currentStatus,
       onUndoComplete,
       hideViewListButton = false,
+      undoOnAdd = false,
     } = params;
 
     try {
@@ -330,19 +344,30 @@ export const useTitleStatusAction = () => {
           },
         });
 
-        // If hideViewListButton is true, don't show the button (e.g., when already on that list page)
         showToast(
           t('preferences.titleAdded', { title }),
-          hideViewListButton
-            ? null
-            : {
-                label: t('home.viewList'),
+          undoOnAdd
+            ? {
+                label: t('undo.undo'),
                 variant: 'secondary',
-                action: async () => {
-                  await navigateTo(routeWithLang('/lists?tab=liked'));
+                action: () =>
+                  undoAddedStatus({
+                    tmdbId: tmdb_id,
+                    type,
+                    previousStatus: currentStatus ?? null,
+                    onUndoComplete,
+                  }),
+              }
+            : hideViewListButton
+              ? null
+              : {
+                  label: t('home.viewList'),
+                  variant: 'secondary',
+                  action: async () => {
+                    await navigateTo(routeWithLang('/lists?tab=liked'));
+                  },
                 },
-              },
-          5000
+          undoOnAdd ? 7000 : 5000
         );
 
         return { success: true, action: 'added', newStatus: TITLE_STATUS.SEEN };
@@ -367,3 +392,56 @@ export const useTitleStatusAction = () => {
     executeLikedAction,
   };
 };
+
+async function undoAddedStatus(options: {
+  tmdbId: number;
+  type: MediaType;
+  previousStatus: TitleStatusType | null;
+  onUndoComplete?: () => Promise<void> | void;
+}) {
+  try {
+    const {
+      data: { session },
+    } = await getSession();
+    if (!session?.access_token) return;
+
+    if (options.previousStatus) {
+      await $fetch('/api/users/title-status', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          tmdb_id: options.tmdbId,
+          type: options.type,
+          status: options.previousStatus,
+          liked: false,
+        },
+      });
+    } else {
+      await $fetch('/api/users/title-status/delete', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        query: {
+          tmdb_id: options.tmdbId,
+        },
+      });
+    }
+
+    if (options.onUndoComplete) {
+      await options.onUndoComplete();
+    }
+  } catch (error) {
+    const { logError } = useLogger();
+    logError(
+      '[TitleStatusAction] Error undoing added status',
+      error as Error,
+      {
+        tmdbId: options.tmdbId,
+        type: options.type,
+      }
+    );
+  }
+}

@@ -86,6 +86,7 @@
     "forgotPasswordSent": "Recovery link sent! Check your email.",
     "signUpSuccess": "Sign up successful! Check your email to confirm your account.",
     "passwordNotValid": "Password does not meet requirements.",
+    "invalidCredentials": "The email or password is incorrect.",
     "genericError": "An error occurred",
     "createAccount": "Create account",
     "signIn": "Sign in",
@@ -122,6 +123,35 @@
     "emailSent": "Sent!",
     "sending": "Sending...",
     "checkEmailConfirm": "Check your email to confirm your account!",
+    "emails": {
+      "signup": {
+        "subject": "Confirm your UpNext account",
+        "preheader": "You're one step away from finding what to watch next.",
+        "headline": "Confirm your email",
+        "body": "You're one step away from finding what to watch next.",
+        "button": "Confirm email",
+        "fallback": "If the button doesn't work, copy this link into your browser.",
+        "footer": "If you didn't create an UpNext account, you can ignore this email."
+      },
+      "magicLink": {
+        "subject": "Your UpNext sign-in link",
+        "preheader": "Use this link to get back to your recommendations.",
+        "headline": "Sign in to UpNext",
+        "body": "Use this link to get back to your recommendations. It expires shortly.",
+        "button": "Sign in",
+        "fallback": "If the button doesn't work, copy this link into your browser.",
+        "footer": "If you didn't request this link, you can ignore this email."
+      },
+      "recovery": {
+        "subject": "Reset your UpNext password",
+        "preheader": "We received a request to change your password.",
+        "headline": "Reset your password",
+        "body": "We received a request to change the password for this email.",
+        "button": "Reset password",
+        "fallback": "If the button doesn't work, copy this link into your browser.",
+        "footer": "If you didn't request this change, you can ignore this email."
+      }
+    },
     "checkEmailRecovery": "If an account is associated with this email, you'll receive a link to reset your password in a few minutes.",
     "checkEmailMagicLink": "Check your email for the magic link!",
     "emailField": "Email address",
@@ -604,6 +634,7 @@
     "recaps": "Recaps",
     "videoUnofficial": "Unofficial",
     "viewDetails": "View details",
+    "seeMore": "See more",
     "back": "Back",
     "seen": "Seen",
     "liked": "Favorites",

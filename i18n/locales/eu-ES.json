@@ -86,6 +86,7 @@
     "forgotPasswordSent": "Berreskuratze esteka bidali da! Begiratu zure posta elektronikoa.",
     "signUpSuccess": "Erregistroa arrakastatsua! Begiratu zure posta kontua berresteko.",
     "passwordNotValid": "Pasahitzak ez ditu baldintzak betetzen.",
+    "invalidCredentials": "Posta elektronikoa edo pasahitza ez dira zuzenak.",
     "genericError": "Errore bat gertatu da",
     "createAccount": "Kontua sortu",
     "signIn": "Saioa hasi",
@@ -122,6 +123,35 @@
     "emailSent": "Bidalita!",
     "sending": "Bidaltzen...",
     "checkEmailConfirm": "Begiratu zure posta elektronikoa zure kontua berresteko!",
+    "emails": {
+      "signup": {
+        "subject": "Berretsi zure UpNext kontua",
+        "preheader": "Urrats bat besterik ez duzu jakiteko zer ikusi hurrengoan.",
+        "headline": "Berretsi zure posta",
+        "body": "Urrats bat besterik ez duzu jakiteko zer ikusi hurrengoan.",
+        "button": "Berretsi posta",
+        "fallback": "Botoiak ez badu funtzionatzen, kopiatu esteka hau nabigatzailean.",
+        "footer": "Ez baduzu UpNext-en konturik sortu, ez ikusi egin mezu honi."
+      },
+      "magicLink": {
+        "subject": "UpNext-en sartzeko zure esteka",
+        "preheader": "Erabili esteka hau zure gomendioetara itzultzeko.",
+        "headline": "Sartu UpNext-en",
+        "body": "Erabili esteka hau zure gomendioetara itzultzeko. Laster iraungiko da.",
+        "button": "Sartu",
+        "fallback": "Botoiak ez badu funtzionatzen, kopiatu esteka hau nabigatzailean.",
+        "footer": "Ez baduzu esteka hau eskatu, ez ikusi egin mezu honi."
+      },
+      "recovery": {
+        "subject": "Berrezarri zure UpNext pasahitza",
+        "preheader": "Zure pasahitza aldatzeko eskaera bat jaso dugu.",
+        "headline": "Berrezarri pasahitza",
+        "body": "Posta honen pasahitza aldatzeko eskaera bat jaso dugu.",
+        "button": "Berrezarri pasahitza",
+        "fallback": "Botoiak ez badu funtzionatzen, kopiatu esteka hau nabigatzailean.",
+        "footer": "Ez baduzu aldaketa hau eskatu, ez ikusi egin mezu honi."
+      }
+    },
     "checkEmailRecovery": "Posta elektroniko honi lotutako kontu bat badago, minutu batzuk barru pasahitza berrezartzeko esteka bat jasoko duzu.",
     "checkEmailMagicLink": "Begiratu zure posta elektronikoa esteka magikoa jasotzeko!",
     "emailField": "Posta elektronikoa",
@@ -604,6 +634,7 @@
     "recaps": "Laburpenak",
     "videoUnofficial": "Ofiziala ez",
     "viewDetails": "Ikusi xehetasunak",
+    "seeMore": "Gehiago ikusi",
     "back": "Atzera",
     "seen": "Ikusia",
     "liked": "Gogokoak",

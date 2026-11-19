@@ -86,6 +86,7 @@
     "forgotPasswordSent": "Enllaç de recuperació enviat! Revisa el teu correu electrònic.",
     "signUpSuccess": "Registre exitós! Revisa el teu correu per confirmar el teu compte.",
     "passwordNotValid": "La contrasenya no compleix els requisits.",
+    "invalidCredentials": "El correu o la contrasenya no són correctes.",
     "genericError": "S'ha produït un error",
     "createAccount": "Crear compte",
     "signIn": "Iniciar sessió",
@@ -122,6 +123,35 @@
     "emailSent": "Enviat!",
     "sending": "Enviant...",
     "checkEmailConfirm": "Revisa el teu correu per confirmar el teu compte!",
+    "emails": {
+      "signup": {
+        "subject": "Confirma el teu compte d'UpNext",
+        "preheader": "Ets a un pas de saber què veure a continuació.",
+        "headline": "Confirma el correu",
+        "body": "Ets a un pas de saber què veure a continuació.",
+        "button": "Confirmar correu",
+        "fallback": "Si el botó no funciona, copia aquest enllaç al navegador.",
+        "footer": "Si no has creat un compte a UpNext, pots ignorar aquest correu."
+      },
+      "magicLink": {
+        "subject": "El teu enllaç per entrar a UpNext",
+        "preheader": "Fes servir aquest enllaç per tornar a les teves recomanacions.",
+        "headline": "Entra a UpNext",
+        "body": "Fes servir aquest enllaç per tornar a les teves recomanacions. Caduca aviat.",
+        "button": "Entrar",
+        "fallback": "Si el botó no funciona, copia aquest enllaç al navegador.",
+        "footer": "Si no has demanat aquest enllaç, pots ignorar aquest correu."
+      },
+      "recovery": {
+        "subject": "Restableix la contrasenya d'UpNext",
+        "preheader": "Hem rebut una sol·licitud per canviar la teva contrasenya.",
+        "headline": "Restableix la contrasenya",
+        "body": "Hem rebut una sol·licitud per canviar la contrasenya d'aquest correu.",
+        "button": "Restablir contrasenya",
+        "fallback": "Si el botó no funciona, copia aquest enllaç al navegador.",
+        "footer": "Si no has demanat aquest canvi, pots ignorar aquest correu."
+      }
+    },
     "checkEmailRecovery": "Si existeix un compte associat a aquest correu, rebràs en uns minuts un enllaç per restablir la contrasenya.",
     "checkEmailMagicLink": "Revisa el teu correu per a l'enllaç màgic!",
     "emailField": "Correu electrònic",
@@ -604,6 +634,7 @@
     "recaps": "Resum",
     "videoUnofficial": "No oficial",
     "viewDetails": "Veure detalls",
+    "seeMore": "Veure més",
     "back": "Tornar",
     "seen": "Vist",
     "liked": "Favorits",

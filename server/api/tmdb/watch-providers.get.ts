@@ -7,9 +7,9 @@ export default defineEventHandler(async (event) => {
     // Get user preferences for language and region
     const params = await getUserTMDBParams(event);
     
-    // Allow override of region and language via query parameters (for preview before saving)
+    // Language can follow the page URL. Region is always Spain.
     const query = getQuery(event);
-    const region = (query.region as string) || params.region;
+    const region = params.region;
     const language = (query.language as string) || params.language;
     
     const config = getTMDBConfig(language, region);
