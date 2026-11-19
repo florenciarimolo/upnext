@@ -6,11 +6,17 @@
       class="-mx-4 -mt-4 w-screen lg:hidden md:-mx-6"
     >
       <div class="relative w-full aspect-[16/9] p-4 pt-6">
-        <img
-          :src="`https://image.tmdb.org/t/p/w780${season.poster_path}`"
-          :alt="season.name"
-          class="object-cover object-top absolute inset-0 z-0 w-full h-full"
-        />
+        <picture>
+          <source
+            media="(min-width: 1024px)"
+            srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+          />
+          <img
+            :src="`https://image.tmdb.org/t/p/w780${season.poster_path}`"
+            :alt="season.name"
+            class="object-cover object-top absolute inset-0 z-0 w-full h-full"
+          />
+        </picture>
         <!-- Gradient overlay: black to transparent left to right -->
         <div
           class="absolute inset-0 z-0 bg-gradient-to-r to-transparent from-black/60 via-black/30"
@@ -64,7 +70,7 @@
     </div>
     <Section>
       <section
-        class="relative flex flex-col items-center justify-between gap-16 pb-8 dark:text-gray-300 text-gray-800 w-full flex-shrink-0 min-h-[400px] lg:flex-row lg:items-start lg:p-16 lg:bg-gray-100/80 dark:lg:bg-gray-900/40 lg:backdrop-blur-xl lg:border lg:gap-14 rounded-3xl lg:border-gray-300/50 lg:dark:border-white/10 lg:shadow-lg lg:shadow-primary/20"
+        class="relative flex flex-col items-center justify-between gap-16 pb-8 dark:text-gray-300 text-gray-800 w-full flex-shrink-0 min-h-[400px] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:p-16 lg:bg-gray-100/80 dark:lg:bg-gray-900/40 lg:backdrop-blur-xl lg:border lg:gap-14 rounded-3xl lg:border-gray-300/50 lg:dark:border-white/10 lg:shadow-lg lg:shadow-primary/20"
       >
         <div
           class="hidden absolute inset-0 z-0 rounded-3xl lg:block"
@@ -76,7 +82,7 @@
         ></div>
         <!-- Left column: Image + Providers -->
         <div
-          class="hidden relative z-10 flex-col flex-shrink-0 gap-14 lg:flex lg:max-w-80 lg:w-80"
+          class="hidden relative z-10 flex-col flex-shrink-0 gap-14 lg:col-start-1 lg:row-start-1 lg:flex lg:max-w-80 lg:w-80"
         >
           <div
             class="relative w-full lg:max-w-80 lg:w-80 flex-shrink-0 lg:aspect-[2/3]"
@@ -86,51 +92,23 @@
               v-if="season?.poster_path"
               class="relative overflow-hidden rounded-3xl w-full aspect-[2/3] h-full max-h-[500px]"
             >
-              <img
-                :src="`https://image.tmdb.org/t/p/w780${season.poster_path}`"
-                :alt="season.name"
-                class="object-cover w-full h-full rounded-3xl"
-              />
+              <picture class="block w-full h-full">
+                <source
+                  media="(max-width: 1023px)"
+                  srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                />
+                <img
+                  :src="`https://image.tmdb.org/t/p/w780${season.poster_path}`"
+                  :alt="season.name"
+                  class="object-cover w-full h-full rounded-3xl"
+                />
+              </picture>
             </div>
           </div>
-          <!-- Providers below image on desktop -->
-          <section class="flex flex-col gap-6">
-            <section v-if="hasAvailableProviders" class="flex flex-col gap-8">
-              <ProviderList
-                v-if="season?.providers?.flatrate?.length"
-                :media-provider-prop-list="season.providers.flatrate"
-                :watch-type-prop="$t('media.watchIn')"
-                :media-type="MEDIA_TYPE.TV"
-                :media-title="season?.name || ''"
-                :tmdb-id="tmdbId"
-              />
-
-              <ProviderList
-                v-if="season?.providers?.buy?.length"
-                :media-provider-prop-list="season.providers.buy"
-                :watch-type-prop="$t('media.buyIn')"
-                :media-type="MEDIA_TYPE.TV"
-                :media-title="season?.name || ''"
-                :tmdb-id="tmdbId"
-              />
-
-              <ProviderList
-                v-if="season?.providers?.rent?.length"
-                :media-provider-prop-list="season.providers.rent"
-                :watch-type-prop="$t('media.rentIn')"
-                :media-type="MEDIA_TYPE.TV"
-                :media-title="season?.name || ''"
-                :tmdb-id="tmdbId"
-              />
-            </section>
-            <section v-else class="text-gray-600 dark:text-gray-400">
-              <p class="italic">{{ $t('media.noPlatforms') }}</p>
-            </section>
-          </section>
         </div>
         <!-- Right column: Content -->
         <div
-          class="z-10 relative flex flex-col flex-1 gap-6 rounded-lg w-full flex-shrink-0 min-h-[300px]"
+          class="z-10 relative flex flex-col flex-1 gap-6 rounded-lg w-full flex-shrink-0 min-h-[300px] lg:col-start-2 lg:row-start-1 lg:row-span-2"
         >
           <div class="relative flex-row text-left">
             <button
@@ -148,11 +126,13 @@
                 class="flex flex-wrap gap-3 items-center xl:flex-nowrap xl:flex-1"
               >
                 <div class="hidden flex-col gap-2 lg:flex xl:flex-1">
-                  <h1
+                  <p
                     class="text-4xl font-bold text-gray-800 break-words dark:text-gray-300"
+                    role="heading"
+                    aria-level="1"
                   >
                     {{ season?.name }}
-                  </h1>
+                  </p>
                   <p
                     v-if="tagline"
                     class="text-base italic text-gray-700 break-words dark:text-gray-400"
@@ -250,41 +230,42 @@
             />
           </div>
 
-          <!-- Displaying watch providers (mobile only) -->
-          <section class="flex flex-col gap-6 lg:hidden">
-            <section v-if="hasAvailableProviders" class="flex flex-col gap-8">
-              <ProviderList
-                v-if="season?.providers?.flatrate?.length"
-                :media-provider-prop-list="season.providers.flatrate"
-                :watch-type-prop="$t('media.watchIn')"
-                :media-type="MEDIA_TYPE.TV"
-                :media-title="season?.name || ''"
-                :tmdb-id="tmdbId"
-              />
-
-              <ProviderList
-                v-if="season?.providers?.buy?.length"
-                :media-provider-prop-list="season.providers.buy"
-                :watch-type-prop="$t('media.buyIn')"
-                :media-type="MEDIA_TYPE.TV"
-                :media-title="season?.name || ''"
-                :tmdb-id="tmdbId"
-              />
-
-              <ProviderList
-                v-if="season?.providers?.rent?.length"
-                :media-provider-prop-list="season.providers.rent"
-                :watch-type-prop="$t('media.rentIn')"
-                :media-type="MEDIA_TYPE.TV"
-                :media-title="season?.name || ''"
-                :tmdb-id="tmdbId"
-              />
-            </section>
-            <section v-else class="text-gray-600 dark:text-gray-400">
-              <p class="italic">{{ $t('media.noPlatforms') }}</p>
-            </section>
-          </section>
         </div>
+        <section
+          class="relative z-10 flex w-full flex-col gap-6 lg:col-start-1 lg:row-start-2"
+        >
+          <section v-if="hasAvailableProviders" class="flex flex-col gap-8">
+            <ProviderList
+              v-if="season?.providers?.flatrate?.length"
+              :media-provider-prop-list="season.providers.flatrate"
+              :watch-type-prop="$t('media.watchIn')"
+              :media-type="MEDIA_TYPE.TV"
+              :media-title="season?.name || ''"
+              :tmdb-id="tmdbId"
+            />
+
+            <ProviderList
+              v-if="season?.providers?.buy?.length"
+              :media-provider-prop-list="season.providers.buy"
+              :watch-type-prop="$t('media.buyIn')"
+              :media-type="MEDIA_TYPE.TV"
+              :media-title="season?.name || ''"
+              :tmdb-id="tmdbId"
+            />
+
+            <ProviderList
+              v-if="season?.providers?.rent?.length"
+              :media-provider-prop-list="season.providers.rent"
+              :watch-type-prop="$t('media.rentIn')"
+              :media-type="MEDIA_TYPE.TV"
+              :media-title="season?.name || ''"
+              :tmdb-id="tmdbId"
+            />
+          </section>
+          <section v-else class="text-gray-600 dark:text-gray-400">
+            <p class="italic">{{ $t('media.noPlatforms') }}</p>
+          </section>
+        </section>
       </section>
     </Section>
   </div>

@@ -6,14 +6,21 @@
       class="lg:hidden w-screen -mx-4 md:-mx-6 -mt-4"
     >
       <div class="relative w-full aspect-[16/9] p-4 pt-6">
-        <img
-          :src="
-            `https://image.tmdb.org/t/p/w780` +
-            (mediaWithProviders.backdrop_path || mediaWithProviders.poster_path)
-          "
-          :alt="mediaWithProviders.title"
-          class="absolute inset-0 w-full h-full object-cover object-top z-0"
-        />
+        <picture>
+          <source
+            media="(min-width: 1024px)"
+            srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+          />
+          <img
+            :src="
+              `https://image.tmdb.org/t/p/w780` +
+              (mediaWithProviders.backdrop_path ||
+                mediaWithProviders.poster_path)
+            "
+            :alt="mediaWithProviders.title"
+            class="absolute inset-0 w-full h-full object-cover object-top z-0"
+          />
+        </picture>
         <!-- Gradient overlay: black to transparent left to right -->
         <div
           class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent z-0"
@@ -310,7 +317,7 @@
     </div>
     <Section>
       <section
-        class="relative flex flex-col items-center justify-between gap-16 dark:text-gray-300 text-gray-800 w-full flex-shrink-0 min-h-[400px] lg:flex-row lg:items-start lg:p-16 lg:bg-gray-100/80 dark:lg:bg-gray-900/40 lg:backdrop-blur-xl lg:border lg:gap-14 rounded-3xl lg:border-gray-300/50 lg:dark:border-white/10 lg:shadow-lg lg:shadow-primary/20"
+        class="relative flex flex-col items-center justify-between gap-16 dark:text-gray-300 text-gray-800 w-full flex-shrink-0 min-h-[400px] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:p-16 lg:bg-gray-100/80 dark:lg:bg-gray-900/40 lg:backdrop-blur-xl lg:border lg:gap-14 rounded-3xl lg:border-gray-300/50 lg:dark:border-white/10 lg:shadow-lg lg:shadow-primary/20"
       >
         <div
           class="hidden absolute inset-0 z-0 rounded-3xl lg:block"
@@ -322,7 +329,7 @@
         ></div>
         <!-- Left column: Image + Providers -->
         <div
-          class="hidden lg:flex flex-col gap-14 lg:max-w-80 lg:w-80 flex-shrink-0 relative z-10"
+          class="hidden lg:flex flex-col gap-14 lg:col-start-1 lg:row-start-1 lg:max-w-80 lg:w-80 flex-shrink-0 relative z-10"
         >
           <div
             class="relative w-full lg:max-w-80 lg:w-80 flex-shrink-0 lg:aspect-[2/3]"
@@ -331,14 +338,20 @@
             <div
               class="relative overflow-hidden rounded-3xl w-full aspect-[2/3] h-full max-h-[500px]"
             >
-              <img
-                :src="
-                  `https://image.tmdb.org/t/p/w780` +
-                  mediaWithProviders.poster_path
-                "
-                :alt="mediaWithProviders.title"
-                class="w-full h-full object-cover rounded-3xl"
-              />
+              <picture class="block w-full h-full">
+                <source
+                  media="(max-width: 1023px)"
+                  srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                />
+                <img
+                  :src="
+                    `https://image.tmdb.org/t/p/w780` +
+                    mediaWithProviders.poster_path
+                  "
+                  :alt="mediaWithProviders.title"
+                  class="w-full h-full object-cover rounded-3xl"
+                />
+              </picture>
             </div>
             <!-- Informative icons overlay (only show if user has session) -->
             <!-- Moved outside overflow-hidden container to prevent tooltip clipping -->
@@ -386,77 +399,10 @@
               </Tooltip>
             </div>
           </div>
-          <!-- Providers below image on desktop -->
-          <section class="flex flex-col gap-6">
-            <section v-if="hasAvailableProviders" class="flex flex-col gap-8">
-              <ProviderList
-                :media-provider-prop-list="
-                  mediaWithProviders.providers?.flatrate || []
-                "
-                :watch-type-prop="$t('media.watchIn')"
-                :media-title="
-                  mediaWithProviders.title ||
-                  (mediaWithProviders as any).name ||
-                  ''
-                "
-                :original-title="
-                  mediaWithProviders.original_title ||
-                  (mediaWithProviders as any).original_name ||
-                  ''
-                "
-                :alternative-titles="alternativeTitles"
-                :media-type="mediaType"
-                :tmdb-id="mediaWithProviders.id"
-              />
-
-              <ProviderList
-                :media-provider-prop-list="
-                  mediaWithProviders.providers?.buy || []
-                "
-                :watch-type-prop="$t('media.buyIn')"
-                :media-title="
-                  mediaWithProviders.title ||
-                  (mediaWithProviders as any).name ||
-                  ''
-                "
-                :original-title="
-                  mediaWithProviders.original_title ||
-                  (mediaWithProviders as any).original_name ||
-                  ''
-                "
-                :alternative-titles="alternativeTitles"
-                :media-type="mediaType"
-                :tmdb-id="mediaWithProviders.id"
-              />
-
-              <ProviderList
-                :media-provider-prop-list="
-                  mediaWithProviders.providers?.rent || []
-                "
-                :watch-type-prop="$t('media.rentIn')"
-                :media-title="
-                  mediaWithProviders.title ||
-                  (mediaWithProviders as any).name ||
-                  ''
-                "
-                :original-title="
-                  mediaWithProviders.original_title ||
-                  (mediaWithProviders as any).original_name ||
-                  ''
-                "
-                :alternative-titles="alternativeTitles"
-                :media-type="mediaType"
-                :tmdb-id="mediaWithProviders.id"
-              />
-            </section>
-            <section v-else class="text-gray-600 dark:text-gray-400">
-              <p class="italic">{{ $t('media.noPlatforms') }}</p>
-            </section>
-          </section>
         </div>
         <!-- Right column: Content -->
         <div
-          class="z-10 relative flex flex-col flex-1 gap-6 rounded-lg w-full flex-shrink-0 min-h-[300px]"
+          class="z-10 relative flex flex-col flex-1 gap-6 rounded-lg w-full flex-shrink-0 min-h-[300px] lg:col-start-2 lg:row-start-1 lg:row-span-2"
         >
           <div class="relative flex-row text-left">
             <button
@@ -474,14 +420,16 @@
                 class="flex flex-wrap gap-3 items-center xl:flex-nowrap xl:flex-1 xl:min-w-0"
               >
                 <div class="hidden lg:flex flex-col gap-2 xl:flex-1 xl:min-w-0">
-                  <h1
+                  <p
                     class="text-4xl font-bold text-gray-800 break-words dark:text-gray-300"
+                    role="heading"
+                    aria-level="1"
                   >
                     {{
                       mediaWithProviders.title ||
                       (mediaWithProviders as any).name
                     }}
-                  </h1>
+                  </p>
                   <p
                     v-if="tagline"
                     class="text-base italic text-gray-700 dark:text-gray-400 break-words"
@@ -802,74 +750,75 @@
               :title="$t('media.recaps')"
             />
           </div>
-          <!-- Displaying watch providers with their logos (mobile only) -->
-          <section class="flex flex-col gap-6 lg:hidden">
-            <section v-if="hasAvailableProviders" class="flex flex-col gap-8">
-              <ProviderList
-                :media-provider-prop-list="
-                  mediaWithProviders.providers?.flatrate || []
-                "
-                :watch-type-prop="$t('media.watchIn')"
-                :media-title="
-                  mediaWithProviders.title ||
-                  (mediaWithProviders as any).name ||
-                  ''
-                "
-                :original-title="
-                  mediaWithProviders.original_title ||
-                  (mediaWithProviders as any).original_name ||
-                  ''
-                "
-                :alternative-titles="alternativeTitles"
-                :media-type="mediaType"
-                :tmdb-id="mediaWithProviders.id"
-              />
-
-              <ProviderList
-                :media-provider-prop-list="
-                  mediaWithProviders.providers?.buy || []
-                "
-                :watch-type-prop="$t('media.buyIn')"
-                :media-title="
-                  mediaWithProviders.title ||
-                  (mediaWithProviders as any).name ||
-                  ''
-                "
-                :original-title="
-                  mediaWithProviders.original_title ||
-                  (mediaWithProviders as any).original_name ||
-                  ''
-                "
-                :alternative-titles="alternativeTitles"
-                :media-type="mediaType"
-                :tmdb-id="mediaWithProviders.id"
-              />
-
-              <ProviderList
-                :media-provider-prop-list="
-                  mediaWithProviders.providers?.rent || []
-                "
-                :watch-type-prop="$t('media.rentIn')"
-                :media-title="
-                  mediaWithProviders.title ||
-                  (mediaWithProviders as any).name ||
-                  ''
-                "
-                :original-title="
-                  mediaWithProviders.original_title ||
-                  (mediaWithProviders as any).original_name ||
-                  ''
-                "
-                :alternative-titles="alternativeTitles"
-                :media-type="mediaType"
-                :tmdb-id="mediaWithProviders.id"
-              />
-            </section>
-            <section v-else class="text-gray-600 dark:text-gray-400">
-              <p class="italic">{{ $t('media.noPlatforms') }}</p>
-            </section>
-          </section>
         </div>
+        <section
+          class="relative z-10 flex w-full flex-col gap-6 lg:col-start-1 lg:row-start-2"
+        >
+          <section v-if="hasAvailableProviders" class="flex flex-col gap-8">
+            <ProviderList
+              :media-provider-prop-list="
+                mediaWithProviders.providers?.flatrate || []
+              "
+              :watch-type-prop="$t('media.watchIn')"
+              :media-title="
+                mediaWithProviders.title ||
+                (mediaWithProviders as any).name ||
+                ''
+              "
+              :original-title="
+                mediaWithProviders.original_title ||
+                (mediaWithProviders as any).original_name ||
+                ''
+              "
+              :alternative-titles="alternativeTitles"
+              :media-type="mediaType"
+              :tmdb-id="mediaWithProviders.id"
+            />
+
+            <ProviderList
+              :media-provider-prop-list="
+                mediaWithProviders.providers?.buy || []
+              "
+              :watch-type-prop="$t('media.buyIn')"
+              :media-title="
+                mediaWithProviders.title ||
+                (mediaWithProviders as any).name ||
+                ''
+              "
+              :original-title="
+                mediaWithProviders.original_title ||
+                (mediaWithProviders as any).original_name ||
+                ''
+              "
+              :alternative-titles="alternativeTitles"
+              :media-type="mediaType"
+              :tmdb-id="mediaWithProviders.id"
+            />
+
+            <ProviderList
+              :media-provider-prop-list="
+                mediaWithProviders.providers?.rent || []
+              "
+              :watch-type-prop="$t('media.rentIn')"
+              :media-title="
+                mediaWithProviders.title ||
+                (mediaWithProviders as any).name ||
+                ''
+              "
+              :original-title="
+                mediaWithProviders.original_title ||
+                (mediaWithProviders as any).original_name ||
+                ''
+              "
+              :alternative-titles="alternativeTitles"
+              :media-type="mediaType"
+              :tmdb-id="mediaWithProviders.id"
+            />
+          </section>
+          <section v-else class="text-gray-600 dark:text-gray-400">
+            <p class="italic">{{ $t('media.noPlatforms') }}</p>
+          </section>
+        </section>
       </section>
     </Section>
   </div>
