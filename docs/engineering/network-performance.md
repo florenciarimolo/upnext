@@ -300,13 +300,9 @@ for (const langCode of fallbackLanguages) {
 - ✅ If `spanishTitle` is provided, it doesn't make the API call
 - ✅ This avoids duplicate calls when generating URL for multiple providers
 
-### ⚠️ Solution 5: `/api/titles/${tmdbId}/videos` - PENDING
+### ✅ Solution 5: `/api/titles/${tmdbId}/videos` - ONE RESPONSE
 
-**Status:** Identified for optimization
-
-- Current implementation makes up to 3 calls for language fallback
-- Could be optimized if server returns multiple languages in one call
-- Or implement cache to avoid repeated calls
+`getVideosForTitle()` asks once with `langs` (current language, then the region language, then English). `server/api/titles/[tmdbId]/videos.get.ts` resolves that list in order and returns `{ results }`. The composable still keeps the first language that has an official YouTube trailer or recap. A failed language becomes an empty list and the next one is used.
 
 ### ⚠️ Solution 6: `/api/users/title-status` - PENDING
 

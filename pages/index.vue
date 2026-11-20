@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { computed, watchEffect, onMounted, ref, watch } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  watchEffect,
+  onMounted,
+  ref,
+  watch,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { useRecommendations } from '@/composables/useRecommendations';
@@ -17,7 +24,6 @@ import Section from '@/components/layout/Section.vue';
 import SectionTitle from '@/components/layout/SectionTitle.vue';
 import Button from '@/components/ui/Button.vue';
 import IconFilter from '@/components/icons/IconFilter.vue';
-import FilterCards from '@/components/home/FilterCards.vue';
 import ProblemSection from '@/components/home/ProblemSection.vue';
 import ProductFlowSection from '@/components/home/ProductFlowSection.vue';
 import DifferentiationSection from '@/components/home/DifferentiationSection.vue';
@@ -26,11 +32,7 @@ import ProductValueSection from '@/components/home/ProductValueSection.vue';
 import FaqSection from '@/components/home/FaqSection.vue';
 import FinalCtaSection from '@/components/home/FinalCtaSection.vue';
 import AnimatedBackground from '@/components/AnimatedBackground.vue';
-import RecommendationSection from '@/components/RecommendationSection.vue';
-import ViewModeSelector from '@/components/ViewModeSelector.vue';
 import { useLogger } from '@/composables/useLogger';
-import SkeletonMediaCard from '@/components/SkeletonMediaCard.vue';
-import SkeletonListItem from '@/components/SkeletonListItem.vue';
 import { useViewMode } from '@/composables/useViewMode';
 import { VIEW_MODE } from '@/constants/domain/viewMode';
 import { getSession } from '@/services/auth';
@@ -40,8 +42,26 @@ import { DEFAULT_REGION } from '@/constants/regions';
 import { useRouteWithLang } from '@/composables/useRouteWithLang';
 import { useUndoToast } from '@/composables/useUndoToast';
 import Toast from '@/components/ui/Toast.vue';
-import Modal from '@/components/ui/Modal.vue';
-import AuthForm from '@/components/AuthForm.vue';
+
+const FilterCards = defineAsyncComponent(
+  () => import('@/components/home/FilterCards.vue')
+);
+const RecommendationSection = defineAsyncComponent(
+  () => import('@/components/RecommendationSection.vue')
+);
+const ViewModeSelector = defineAsyncComponent(
+  () => import('@/components/ViewModeSelector.vue')
+);
+const SkeletonMediaCard = defineAsyncComponent(
+  () => import('@/components/SkeletonMediaCard.vue')
+);
+const SkeletonListItem = defineAsyncComponent(
+  () => import('@/components/SkeletonListItem.vue')
+);
+const Modal = defineAsyncComponent(() => import('@/components/ui/Modal.vue'));
+const AuthForm = defineAsyncComponent(
+  () => import('@/components/AuthForm.vue')
+);
 
 // Middleware handles onboarding check - if user has session, onboarding is completed
 definePageMeta({
@@ -1324,6 +1344,7 @@ onMounted(() => {
 
     <!-- Auth Form Modal -->
     <Modal
+      v-if="showAuthForm"
       :is-open="showAuthForm"
       custom-class="max-w-md p-0"
       @close="showAuthForm = false"

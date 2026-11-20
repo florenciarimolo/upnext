@@ -109,7 +109,7 @@ export async function countUserLikedTitles(userId: string) {
   const supabase = useSupabaseClient();
   return await supabase
     .from(TABLES.USER_TITLE_STATUS)
-    .select('*', { count: 'exact', head: true })
+    .select(USER_TITLE_STATUS_COLUMNS.ID, { count: 'exact', head: true })
     .eq(USER_TITLE_STATUS_COLUMNS.USER_ID, userId)
     .eq(USER_TITLE_STATUS_COLUMNS.LIKED, true);
 }

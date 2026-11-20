@@ -55,48 +55,50 @@ export async function getVideosForTitle(
 
     // Development-only logging removed - use proper logging if needed for production
 
-    // Try each language in fallback order
-    // We need to check if there are videos of type Trailer or Recap after filtering
+    // One request returns each fallback language, in order. The trailer check stays here.
     let allVideos: Video[] = [];
     const triedLanguages: string[] = [];
+    let videosByLanguage: Video[][] = [];
 
-    for (const langCode of fallbackLanguages) {
-      try {
-        const videos = await $fetch<Video[]>(`/api/titles/${tmdbId}/videos`, {
-          query: { type, lang: langCode },
-        });
+    try {
+      const response = await $fetch<{ results: Video[][] }>(
+        `/api/titles/${tmdbId}/videos`,
+        {
+          query: { type, langs: fallbackLanguages.join(',') },
+        }
+      );
+      videosByLanguage = response.results || [];
+    } catch (error) {
+      const { logWarn } = useLogger();
+      logWarn('[Videos] Error fetching videos', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
 
-        triedLanguages.push(langCode);
+    for (let index = 0; index < fallbackLanguages.length; index++) {
+      const langCode = fallbackLanguages[index];
+      if (!langCode) continue;
+      const videos = videosByLanguage[index];
+      triedLanguages.push(langCode);
 
-        if (videos && videos.length > 0) {
-          // Filter to YouTube only and official videos for rendering
-          const youtubeVideos = videos.filter(
+      if (videos && videos.length > 0) {
+        const youtubeVideos = videos.filter(
+          (video) =>
+            video.site === VIDEO_SITE_YOUTUBE && video.official === true
+        );
+
+        if (youtubeVideos.length > 0) {
+          const trailersOrRecaps = youtubeVideos.filter(
             (video) =>
-              video.site === VIDEO_SITE_YOUTUBE && video.official === true
+              video.type === VIDEO_TYPE_TRAILER ||
+              video.type === VIDEO_TYPE_RECAP
           );
 
-          if (youtubeVideos.length > 0) {
-            // Check if there are videos of type Trailer or Recap
-            // This is the key: we need videos that will be shown after type filtering
-            const trailersOrRecaps = youtubeVideos.filter(
-              (video) =>
-                video.type === VIDEO_TYPE_TRAILER ||
-                video.type === VIDEO_TYPE_RECAP
-            );
-
-            if (trailersOrRecaps.length > 0) {
-              // Found videos that will be displayed, use all YouTube videos
-              allVideos = youtubeVideos;
-              break; // Found videos, stop trying other languages
-            }
+          if (trailersOrRecaps.length > 0) {
+            allVideos = youtubeVideos;
+            break;
           }
         }
-      } catch {
-        // Continue to next language - error is recoverable (fallback to next language)
-        const { logWarn } = useLogger();
-        logWarn('[Videos] Error fetching videos for language, trying next', {
-          langCode,
-        });
       }
     }
 

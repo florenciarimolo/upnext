@@ -20,17 +20,153 @@ import { normalizeVideosForStorage } from '@/server/utils/video-normalization';
 import { updateTitleVideos } from '@/services/titles';
 import { VIDEO_REFRESH_THRESHOLD_HOURS } from '@/constants/domain/videos';
 import { getUserTMDBParams } from '@/server/utils/user-tmdb';
-import type { MultiLanguageVideos } from '@/types/Video';
+import type { MultiLanguageVideos, Video } from '@/types/Video';
 import { LanguageIsoCode, DEFAULT_LANGUAGE_ISO } from '@/constants/languages';
 import { getPrimaryLanguageForRegion } from '@/utils/language-detection';
-import { devLog, logError } from '@/server/utils/logger';
+import { logError } from '@/server/utils/logger';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+async function resolveTitleVideos(options: {
+  supabase: SupabaseClient;
+  tmdbIdNum: number;
+  type: typeof MEDIA_TYPE.MOVIE | typeof MEDIA_TYPE.TV;
+  requestedLang: string | undefined;
+  userLanguage: string;
+  region: string;
+}): Promise<Video[]> {
+  const { supabase, tmdbIdNum, type, requestedLang, userLanguage, region } =
+    options;
+
+  const targetLanguage = requestedLang
+    ? `${requestedLang}-${userLanguage.split('-')[1] || 'ES'}`
+    : userLanguage;
+
+  const regionPrimaryLang = getPrimaryLanguageForRegion(region);
+  const regionPrimaryLangCode =
+    regionPrimaryLang.split('-')[0]?.toLowerCase() || DEFAULT_LANGUAGE_ISO;
+  const requestedLangCode =
+    targetLanguage.split('-')[0]?.toLowerCase() || DEFAULT_LANGUAGE_ISO;
+
+  const { data: title, error: dbError } = await supabase
+    .from(TABLES.TITLES)
+    .select('*')
+    .eq(TITLES_COLUMNS.TMDB_ID, tmdbIdNum)
+    .eq(TITLES_COLUMNS.TYPE, type)
+    .maybeSingle();
+
+  if (dbError || !title) {
+    throw createError({
+      statusCode: 404,
+      statusMessage: 'Title not found',
+    });
+  }
+
+  const preRelease = isPreRelease({
+    release_date: title.release_date,
+    first_air_date: title.first_air_date,
+  });
+
+  const existingVideos = (title.videos as MultiLanguageVideos | null) || null;
+  const videosUpdatedAt = title.videos_updated_at
+    ? new Date(title.videos_updated_at)
+    : null;
+
+  let shouldFetch = false;
+  let tmdbFetchLanguage = targetLanguage;
+
+  if (preRelease) {
+    if (!videosUpdatedAt) {
+      shouldFetch = true;
+    } else {
+      const hoursSinceUpdate =
+        (Date.now() - videosUpdatedAt.getTime()) / (1000 * 60 * 60);
+      if (hoursSinceUpdate >= VIDEO_REFRESH_THRESHOLD_HOURS) {
+        shouldFetch = true;
+      }
+    }
+  } else if (!existingVideos) {
+    shouldFetch = true;
+  } else if (
+    !existingVideos[requestedLangCode] ||
+    existingVideos[requestedLangCode].length === 0
+  ) {
+    shouldFetch = true;
+    if (requestedLangCode !== regionPrimaryLangCode) {
+      tmdbFetchLanguage = `${regionPrimaryLangCode}-${region || 'ES'}`;
+    } else {
+      tmdbFetchLanguage = `${LanguageIsoCode.ENGLISH}-${region || 'ES'}`;
+    }
+  }
+
+  if (shouldFetch) {
+    const languageParam = getVideoLanguageParam();
+    const { getTMDBConfig } = await import('@/server/utils/config');
+    const tmdbConfig = getTMDBConfig(tmdbFetchLanguage, region || 'ES');
+
+    let tmdbVideos;
+    if (type === 'movie') {
+      tmdbVideos = await fetchMovieVideos(
+        tmdbIdNum,
+        languageParam,
+        tmdbConfig.apiKey,
+        tmdbConfig.baseUrl
+      );
+    } else {
+      tmdbVideos = await fetchTVShowVideos(
+        tmdbIdNum,
+        languageParam,
+        tmdbConfig.apiKey,
+        tmdbConfig.baseUrl
+      );
+    }
+
+    if (!tmdbVideos || typeof tmdbVideos !== 'object') {
+      throw new Error('Invalid TMDB response: expected object');
+    }
+
+    const normalizedVideos = normalizeVideosForStorage(
+      tmdbVideos.results || [],
+      existingVideos
+    );
+
+    await updateTitleVideos(
+      tmdbIdNum,
+      type === 'movie' ? MEDIA_TYPE.MOVIE : MEDIA_TYPE.TV,
+      normalizedVideos,
+      new Date(),
+      supabase as Parameters<typeof updateTitleVideos>[4]
+    );
+
+    return (
+      normalizedVideos[requestedLangCode] ||
+      normalizedVideos[DEFAULT_LANGUAGE_ISO] ||
+      normalizedVideos[LanguageIsoCode.ENGLISH] ||
+      Object.values(normalizedVideos)[0] ||
+      []
+    );
+  }
+
+  if (!existingVideos) {
+    return [];
+  }
+
+  return (
+    existingVideos[requestedLangCode] ||
+    existingVideos[DEFAULT_LANGUAGE_ISO] ||
+    existingVideos[LanguageIsoCode.ENGLISH] ||
+    Object.values(existingVideos)[0] ||
+    []
+  );
+}
 
 export default defineEventHandler(async (event) => {
+  let tmdbIdNum = 0;
+  let type: typeof MEDIA_TYPE.MOVIE | typeof MEDIA_TYPE.TV | undefined;
   try {
     const config = useRuntimeConfig();
     const { tmdbId } = getRouterParams(event) as { tmdbId: string };
     const query = getQuery(event);
-    const type = query.type as typeof MEDIA_TYPE.MOVIE | typeof MEDIA_TYPE.TV;
+    type = query.type as typeof MEDIA_TYPE.MOVIE | typeof MEDIA_TYPE.TV;
 
     if (!type || (type !== 'movie' && type !== 'tv')) {
       throw createError({
@@ -39,7 +175,7 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const tmdbIdNum = parseInt(tmdbId, 10);
+    tmdbIdNum = parseInt(tmdbId, 10);
     if (isNaN(tmdbIdNum)) {
       throw createError({
         statusCode: 400,
@@ -58,233 +194,52 @@ export default defineEventHandler(async (event) => {
       },
     });
 
-    // Get user preferences for language and region
-    // If lang query parameter is provided, use it; otherwise use user language from URL
-    const requestedLang = query.lang as string | undefined;
     const { language: userLanguage, region } = await getUserTMDBParams(event);
-    const targetLanguage = requestedLang
-      ? `${requestedLang}-${userLanguage.split('-')[1] || 'ES'}`
-      : userLanguage;
+    const regionCode = region || 'ES';
+    const langsQuery = typeof query.langs === 'string' ? query.langs : '';
 
-    // Get primary language for user's region
-    const regionPrimaryLang = getPrimaryLanguageForRegion(region);
-    const regionPrimaryLangCode =
-      regionPrimaryLang.split('-')[0]?.toLowerCase() || DEFAULT_LANGUAGE_ISO;
-    const requestedLangCode =
-      targetLanguage.split('-')[0]?.toLowerCase() || DEFAULT_LANGUAGE_ISO;
+    if (langsQuery) {
+      const langList = langsQuery
+        .split(',')
+        .map((lang) => lang.trim().toLowerCase())
+        .filter(Boolean)
+        .slice(0, 3);
+      const results: Video[][] = [];
 
-    // Get title from database
-    const { data: title, error: dbError } = await supabase
-      .from(TABLES.TITLES)
-      .select('*')
-      .eq(TITLES_COLUMNS.TMDB_ID, tmdbIdNum)
-      .eq(TITLES_COLUMNS.TYPE, type)
-      .maybeSingle();
-
-    if (dbError || !title) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: 'Title not found',
-      });
-    }
-
-    // Check if pre-release
-    const preRelease = isPreRelease({
-      release_date: title.release_date,
-      first_air_date: title.first_air_date,
-    });
-
-    // Get existing videos
-    const existingVideos = (title.videos as MultiLanguageVideos | null) || null;
-    const videosUpdatedAt = title.videos_updated_at
-      ? new Date(title.videos_updated_at)
-      : null;
-
-    // Determine if we need to fetch videos and which language to use for TMDB
-    let shouldFetch = false;
-    let tmdbFetchLanguage = targetLanguage; // Default: use requested language
-
-    if (preRelease) {
-      // Pre-release: check if videos_updated_at is null or older than threshold
-      if (!videosUpdatedAt) {
-        shouldFetch = true;
-      } else {
-        const hoursSinceUpdate =
-          (Date.now() - videosUpdatedAt.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceUpdate >= VIDEO_REFRESH_THRESHOLD_HOURS) {
-          shouldFetch = true;
-        }
-      }
-    } else {
-      // Released: only fetch if videos is null (never fetched) or missing for current language
-      if (!existingVideos) {
-        shouldFetch = true;
-      } else {
-        // Check if we have videos for target language
-        if (
-          !existingVideos[requestedLangCode] ||
-          existingVideos[requestedLangCode].length === 0
-        ) {
-          shouldFetch = true;
-
-          // Determine which language to use for TMDB fetch:
-          // - If requested language is NOT the region primary language, fetch with region primary language
-          // - If requested language IS the region primary language, fetch with English
-          if (requestedLangCode !== regionPrimaryLangCode) {
-            // Requested language is not the primary, fetch with primary language
-            tmdbFetchLanguage = `${regionPrimaryLangCode}-${region || 'ES'}`;
-            devLog(
-              '[videos.get] No videos for requested language, will fetch with region primary language:',
-              {
-                requestedLang: requestedLangCode,
-                regionPrimaryLang: regionPrimaryLangCode,
-                tmdbFetchLanguage,
-              }
-            );
-          } else {
-            // Requested language is already the primary, fetch with English
-            tmdbFetchLanguage = `${LanguageIsoCode.ENGLISH}-${region || 'ES'}`;
-            devLog(
-              '[videos.get] No videos for requested language (which is primary), will fetch with English:',
-              {
-                requestedLang: requestedLangCode,
-                regionPrimaryLang: regionPrimaryLangCode,
-                tmdbFetchLanguage,
-              }
-            );
-          }
-        }
-      }
-    }
-
-    // Fetch videos from TMDB if needed
-    if (shouldFetch) {
-      try {
-        const languageParam = getVideoLanguageParam();
-        const { getTMDBConfig } = await import('@/server/utils/config');
-        // Use the determined language for TMDB fetch (may be different from targetLanguage)
-        const tmdbConfig = getTMDBConfig(tmdbFetchLanguage, region || 'ES');
-
-        devLog('[videos.get] Fetching videos from TMDB:', {
-          tmdbId: tmdbIdNum,
-          type,
-          requestedLang: requestedLangCode,
-          targetLanguage,
-          tmdbFetchLanguage,
-          region,
-          regionPrimaryLang: regionPrimaryLangCode,
-        });
-
-        let tmdbVideos;
-        if (type === 'movie') {
-          tmdbVideos = await fetchMovieVideos(
-            tmdbIdNum,
-            languageParam,
-            tmdbConfig.apiKey,
-            tmdbConfig.baseUrl
+      for (const langCode of langList) {
+        try {
+          results.push(
+            await resolveTitleVideos({
+              supabase,
+              tmdbIdNum,
+              type,
+              requestedLang: langCode,
+              userLanguage,
+              region: regionCode,
+            })
           );
-        } else {
-          tmdbVideos = await fetchTVShowVideos(
-            tmdbIdNum,
-            languageParam,
-            tmdbConfig.apiKey,
-            tmdbConfig.baseUrl
-          );
-        }
-
-        // Validate TMDB response
-        if (!tmdbVideos || typeof tmdbVideos !== 'object') {
-          throw new Error('Invalid TMDB response: expected object');
-        }
-
-        // Normalize and merge videos
-        const normalizedVideos = normalizeVideosForStorage(
-          tmdbVideos.results || [],
-          existingVideos
-        );
-
-        // Update database (set to {} if empty, never leave as null after first fetch)
-        await updateTitleVideos(
-          tmdbIdNum,
-          type === 'movie' ? MEDIA_TYPE.MOVIE : MEDIA_TYPE.TV,
-          normalizedVideos,
-          new Date(),
-          supabase as Parameters<typeof updateTitleVideos>[4] // Pass server-side Supabase client
-        );
-
-        // Update local reference
-        const updatedVideos = normalizedVideos;
-
-        // Return videos for requested language (not the language used for TMDB fetch)
-        // The videos are now stored in DB with all languages from TMDB response
-        const videosForLang =
-          updatedVideos[requestedLangCode] ||
-          updatedVideos[DEFAULT_LANGUAGE_ISO] ||
-          updatedVideos[LanguageIsoCode.ENGLISH] ||
-          Object.values(updatedVideos)[0] ||
-          [];
-
-        devLog('[videos.get] Returning videos after TMDB fetch:', {
-          requestedLang: requestedLangCode,
-          tmdbFetchLanguage,
-          availableLanguages: Object.keys(updatedVideos),
-          videosForLangCount: videosForLang.length,
-        });
-
-        return videosForLang;
-      } catch (fetchError: unknown) {
-        // Log the actual error for debugging
-        const error = fetchError as {
-          message?: string;
-          stack?: string;
-          statusCode?: number;
-          statusMessage?: string;
-        } | null;
-        logError(
-          '[Videos] Error fetching videos from TMDB',
-          fetchError as Error,
-          {
+        } catch (langError) {
+          logError('[Videos] Fallback language failed', langError as Error, {
             tmdbId: tmdbIdNum,
             type,
-            message: error?.message,
-          }
-        );
-        throw createError({
-          statusCode: error?.statusCode || 500,
-          statusMessage:
-            error?.statusMessage ||
-            `Error fetching videos from TMDB: ${error?.message || 'Unknown error'}`,
-          data: fetchError,
-        });
+            langCode,
+          });
+          results.push([]);
+        }
       }
+
+      return { results };
     }
 
-    // Return existing videos for current language with fallback
-    if (!existingVideos) {
-      devLog('[videos.get] No existing videos in database');
-      return [];
-    }
-
-    // Use requested language code (already calculated)
-    const videosForLang =
-      existingVideos[requestedLangCode] ||
-      existingVideos[DEFAULT_LANGUAGE_ISO] ||
-      existingVideos[LanguageIsoCode.ENGLISH] ||
-      Object.values(existingVideos)[0] ||
-      [];
-
-    devLog('[videos.get] Returning existing videos:', {
-      tmdbId: tmdbIdNum,
+    return resolveTitleVideos({
+      supabase,
+      tmdbIdNum,
       type,
-      requestedLang,
-      targetLanguage,
+      requestedLang: query.lang as string | undefined,
       userLanguage,
-      requestedLangCode,
-      availableLanguages: Object.keys(existingVideos),
-      videosForLangCount: videosForLang.length,
+      region: regionCode,
     });
 
-    return videosForLang;
   } catch (error: unknown) {
     // Log the actual error for debugging
     const errorObj = error as {
