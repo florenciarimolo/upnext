@@ -14,13 +14,15 @@ export default defineEventHandler((event) => {
   ).replace(/\/$/, '');
 
   const robotsContent = `User-agent: *
-Disallow: /auth/
-Disallow: /onboarding
-Disallow: /my-account
-Disallow: /preferences
-Disallow: /watchlist
+Disallow: /*/auth/
+Disallow: /*/onboarding
+Disallow: /*/my-account
+Disallow: /*/preferences
+Disallow: /*/watchlist
+Disallow: /*/lists
+Disallow: /*/following
+Disallow: /*/privacy
 Disallow: /api/
-Disallow: /auth/callback
 
 Allow: /
 

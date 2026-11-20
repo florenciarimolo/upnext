@@ -302,6 +302,8 @@ export default defineNuxtConfig({
       '/:lang/preferences',
       '/:lang/watchlist',
       '/:lang/lists',
+      '/:lang/following',
+      '/:lang/privacy',
       '/api/**',
     ],
     urls: async () => {
@@ -322,13 +324,7 @@ export default defineNuxtConfig({
       ];
 
       // Define static routes (without language prefix - will be added per language)
-      const staticRoutes = [
-        '/',
-        '/how-it-works',
-        '/faq',
-        '/privacy',
-        '/discover',
-      ];
+      const staticRoutes = ['/', '/how-it-works', '/faq', '/discover'];
 
       // Fetch data
       const titles = await getTitleIdsForSitemap();

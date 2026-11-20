@@ -368,6 +368,12 @@ const { canonicalUrl } = useCanonical();
 watchEffect(() => {
   useHead({
     title: t('privacy.pageTitle'),
+    meta: [
+      {
+        name: 'robots',
+        content: 'noindex, nofollow',
+      },
+    ],
     link: [
       ...hreflangLinks.value,
       {
@@ -380,6 +386,7 @@ watchEffect(() => {
   useSeoMeta({
     title: t('privacy.pageTitle'),
     description: t('privacy.description'),
+    robots: 'noindex, nofollow',
   });
 });
 </script>
