@@ -161,4 +161,18 @@ Deployed to `https://getupnext.vercel.app` in commit `2b3304a`. Signed-in reload
 | Latin-ext | not split out | declared, not downloaded on `/en/` |
 | Painted text | Inter for body, Satoshi for headings | the same. The h2 "Recommendations for you" is Satoshi 600. `document.fonts.check` is true for Inter 400–700 and for ñ and ç |
 
-`/fonts/Inter-Regular.woff2` now returns 404. Logos and mockups in `public/` are still `max-age=0`; that is item 7.
+`/fonts/Inter-Regular.woff2` now returns 404. Logos and mockups were still `max-age=0` at this point; item 7 covers them.
+
+### 7. Public images cache for a year
+
+`vercel.json` now sets `Cache-Control: public, max-age=31536000` on `png`, `jpg`, `jpeg`, `webp`, `svg`, and `ico`. That covers logos, mockups, flags, favicons, Open Graph images, and Twitter cards. These names are not hashed, so the header is one year and not `immutable`: a replaced file at the same path can stay cached until that year ends. Fonts keep `immutable` because their filenames are versioned. HTML stays `max-age=0, must-revalidate`.
+
+Deployed to `https://getupnext.vercel.app` in commit `939f7bb`. Headers on 20 November 2026:
+
+| URL | Cache-Control | Second request |
+| --- | --- | --- |
+| `/logo-light.png` | `public, max-age=31536000` | `x-vercel-cache: HIT` (42,557 bytes) |
+| `/mockups/en-step3-result-mockup.webp` | `public, max-age=31536000` | first request `MISS` (86,182 bytes) |
+| `/icons/flags/us.svg`, `/favicon.ico`, `/en-og-image.jpg`, `/tmdb-logo.svg`, `/twitter-cards/en-twitter-card.jpg` | `public, max-age=31536000` | — |
+| `/fonts/inter-variable-latin-v1.woff2` | `public, max-age=31536000, immutable` | unchanged from item 6 |
+| `/en/movie/687163` | `public, max-age=0, must-revalidate` | still a document, not a static file |
