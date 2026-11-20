@@ -143,3 +143,22 @@ Deployed to `https://getupnext.vercel.app` in commit `512a820`. Anonymous HTML o
 | `/en/movie/687163` | Provider logos at `w45` with `width="40"` `height="40"`. Backdrop and poster stay `w780` |
 
 Desktop episode stills stay `w500` because that grid paints them much larger than a card.
+
+### 6. Fonts — one variable Inter, cached for a year
+
+The four static Inter files (about 450 KB of woff2, plus the ttf fallbacks) are gone. `assets/css/main.css` now points at `inter-variable-latin-v1.woff2` (48 KB) with `font-weight: 100 900`, so 400, 500, 600, and 700 come from that one file. `inter-variable-latin-ext-v1.woff2` (85 KB) is declared with a unicode range and loads only when a glyph outside Latin-1 is painted. Spanish, Catalan, Basque, and Galician accents sit in Latin-1.
+
+Satoshi stays the heading family. There is no variable Satoshi file, so the four static woff2 cuts stay, under versioned names (`satoshi-regular-v1.woff2` and the same for medium, semibold, and bold). The ttf copies are removed. The browser downloads only the weights a page paints.
+
+`vercel.json` sets `Cache-Control: public, max-age=31536000, immutable` on `/fonts/(.*)`.
+
+Deployed to `https://getupnext.vercel.app` in commit `2b3304a`. Signed-in reload of `/en/` on 20 November 2026:
+
+| Check | Before | After |
+| --- | --- | --- |
+| Inter on `/en/` | four static woff2, about 450 KB, `max-age=0` | one file, 48,256 bytes, `immutable`. A second request is `x-vercel-cache: HIT` |
+| Satoshi on `/en/` | four faces, ttf listed, `max-age=0` | semibold only, 25,328 bytes, `immutable`. Weights 400, 500, and 700 stay unloaded |
+| Latin-ext | not split out | declared, not downloaded on `/en/` |
+| Painted text | Inter for body, Satoshi for headings | the same. The h2 "Recommendations for you" is Satoshi 600. `document.fonts.check` is true for Inter 400–700 and for ñ and ç |
+
+`/fonts/Inter-Regular.woff2` now returns 404. Logos and mockups in `public/` are still `max-age=0`; that is item 7.
