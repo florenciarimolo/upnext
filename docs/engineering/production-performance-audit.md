@@ -65,7 +65,7 @@ Ordered by time removed. Items 1 and 4 match the rule that Discover and title pa
 2. **Stop duplicating the detail DOM.** Done on the development preview. Movie and series banners kept both layouts and now render one provider list (under the poster from `lg`, after the details below that) and one `h1`. The other title is a paragraph with `role="heading"`. Each image is a `<picture>` whose hidden breakpoint points at a 1×1 image, so the backdrop and the poster are not both downloaded. Checked on `https://getupnext.vercel.app/en/movie/687163`: HTML has one `h1` (34 KB, was 39 KB), desktop shows the poster column with platforms underneath, mobile shows the full-bleed backdrop and the platforms once, below the trailers.
 3. **Stop the signed-in home from refetching taglines.** Done on the development preview. The home used to fire about 20 POSTs to `/api/titles/fetch-tagline` because the main recommendations payload omitted `tagline` even though `getTitleData` had already resolved it. The home and the replacement response now include that string. Recommendation cards and list rows set `fetchMissingTagline` to false, so a null tagline does not start another request. Discover, watchlist, lists, and the title page still fetch a missing tagline, one item at a time. `/api/recommendations` itself is still about 3 s; that server work is unchanged.
 4. **Render Discover on the server.** Done on the development preview. The index and a list page now include the title, the `h1`, and the editorial cards in the HTML. Signed in, the list page reads `user_title_status` once for the titles on the page. The content is still the public lists, not a ranked pool. The global `liked=true` `select=*` read is still there; that is item 10.
-5. **Request images at the painted size.** Discover and home posters ask for `w500` and display at about 48 px. Provider logos ask for `w300` for 48 px, and some are requested 2 or 4 times. Use `w92` or `w154` on cards and `w45` on logos. Set width and height. Home CLS was 0 on the anonymous load; keep it that way with reserved space.
+5. **Request images at the painted size.** Done on the development preview. Discover previews (about 48 px) use `w92`. List-row posters (about 80–96 px) use `w154`. Mosaic and season-grid posters use `w342`. Detail logos use `w45` instead of `w300`. Hero backdrops and the detail poster stay `w780`. Images that changed have `width` and `height`. The list and preview boxes already reserve their aspect ratio.
 6. **Fonts.** About 450 KB of Inter across four files, plus Satoshi, with `max-age=0`. `font-display: swap` is already set. Ship one variable Inter file with the weights the UI uses, and a long cache on a versioned name. Same for Satoshi if headlines keep it.
 7. **Cache for `public/` files.** Logos, mockups, and fonts revalidate on every visit. Long cache (`immutable` with a hash, or one year `max-age`) in `vercel.json`. `/_nuxt` is already correct.
 8. **Public HTML cache, after confirmation.** Anonymous home, Discover, lists, movie, series, season, how-it-works, FAQ, and privacy are always `MISS` with `max-age=0`. A short `stale-while-revalidate` on those routes would drop the ~300 ms TTFB and, more importantly, the 4–6 s series documents. Signed-in home, watchlist, following, lists, preferences, and my-account stay uncached for sharing.
@@ -131,3 +131,15 @@ Deployed to `https://getupnext.vercel.app` in commit `bcb0593`. Anonymous HTML o
 | `/en/discover/list/under-100-minutes` | `<title>This afternoon, in under 100 minutes – Discover \| UpNext</title>`, that same string in the `h1`, eight cards (Before Sunset through WALL·E) |
 
 Signed-in reload of the list: one `user_title_status` read for those eight ids, and no client refetch of `/api/discover/list/under-100-minutes`. A separate `user_title_status?liked=eq.true&select=*` still runs; that is the global read in item 10, not a per-card read.
+
+### 5. Image sizes match the painted box
+
+Deployed to `https://getupnext.vercel.app` in commit `512a820`. Anonymous HTML on 20 November 2026:
+
+| Page | TMDB sizes in the HTML |
+| --- | --- |
+| `/en/discover` | 28 poster previews, all `w92`. No `w500`. |
+| `/en/discover/list/under-100-minutes` | 8 posters at `w154`, 7 logos at `w45` |
+| `/en/movie/687163` | Provider logos at `w45` with `width="40"` `height="40"`. Backdrop and poster stay `w780` |
+
+Desktop episode stills stay `w500` because that grid paints them much larger than a card.
