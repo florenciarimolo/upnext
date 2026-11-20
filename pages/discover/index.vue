@@ -2,9 +2,14 @@
   <AppShell>
     <PageContainer>
       <Section>
-        <SectionTitle :description="$t('discover.description')">
-          {{ $t('discover.title') }}
-        </SectionTitle>
+        <div class="space-y-4 text-left">
+          <PageTitle>
+            {{ $t('discover.title') }}
+          </PageTitle>
+          <p class="text-subtitle font-body text-gray-800 dark:text-gray-300">
+            {{ $t('discover.description') }}
+          </p>
+        </div>
 
         <Spinner v-if="isLoading" :message="$t('discover.loading')" />
 
@@ -53,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { useHreflang } from '@/composables/useHreflang';
@@ -62,7 +67,7 @@ import { useDiscoverKeywords } from '@/composables/useSeoKeywords';
 import AppShell from '@/components/layout/AppShell.vue';
 import PageContainer from '@/components/layout/PageContainer.vue';
 import Section from '@/components/layout/Section.vue';
-import SectionTitle from '@/components/layout/SectionTitle.vue';
+import PageTitle from '@/components/typography/PageTitle.vue';
 import DiscoverListCard from '@/components/DiscoverListCard.vue';
 import Spinner from '@/components/Spinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -128,54 +133,26 @@ useSeoMeta({
   robots: 'index, follow',
 });
 
-const lists = ref<ExtendedDiscoverList[] | null>(null);
-const isLoading = ref(true);
-
-// Function to load lists
-const loadLists = async () => {
-  isLoading.value = true;
-  try {
-    // Pass current locale as query parameter to ensure correct language
-    const response = await $fetch<{
-      success: boolean;
-      lists: ExtendedDiscoverList[];
-    }>(`/api/discover/lists?language=${encodeURIComponent(locale.value)}`);
-
-    if (response.success) {
-      lists.value = response.lists;
-      // Development-only logging removed
+const { data: listsResponse, pending: isLoading } = await useAsyncData(
+  `discover-lists-${String(route.params.lang || locale.value)}`,
+  async () => {
+    try {
+      return await $fetch<{
+        success: boolean;
+        lists: ExtendedDiscoverList[];
+      }>(`/api/discover/lists?language=${encodeURIComponent(locale.value)}`);
+    } catch (error) {
+      const { logError } = useLogger();
+      logError('[Discover] Error fetching lists', error as Error);
+      return { success: false, lists: [] as ExtendedDiscoverList[] };
     }
-  } catch (error) {
-    const { logError } = useLogger();
-    logError('[Discover] Error fetching lists', error as Error);
-  } finally {
-    isLoading.value = false;
+  },
+  {
+    watch: [locale],
   }
-};
+);
 
-// Load lists on mount
-onMounted(() => {
-  loadLists();
-});
-
-// Reload lists when language changes
-watch(locale, () => {
-  loadLists();
-});
-
-// Reload lists when route changes (e.g., when navigating back from a list)
-watch(
-  () => route.path,
-  (newPath) => {
-    // Check if path matches discover route (with language prefix)
-    const lang = route.params?.lang as string | undefined;
-    if (
-      lang &&
-      (newPath === `/${lang}/discover` ||
-        newPath.startsWith(`/${lang}/discover/`))
-    ) {
-      loadLists();
-    }
-  }
+const lists = computed(() =>
+  listsResponse.value?.success ? listsResponse.value.lists : null
 );
 </script>

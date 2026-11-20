@@ -199,3 +199,21 @@ export async function getTitleStatus(userId: string, tmdbId: number) {
     .eq(USER_TITLE_STATUS_COLUMNS.TMDB_ID, tmdbId)
     .maybeSingle();
 }
+
+/**
+ * One read of liked and status for the titles on a page.
+ */
+export async function getTitleStatuses(userId: string, tmdbIds: number[]) {
+  if (tmdbIds.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const supabase = useSupabaseClient();
+  return await supabase
+    .from(TABLES.USER_TITLE_STATUS)
+    .select(
+      `${USER_TITLE_STATUS_COLUMNS.TMDB_ID}, ${USER_TITLE_STATUS_COLUMNS.LIKED}, ${USER_TITLE_STATUS_COLUMNS.STATUS}`
+    )
+    .eq(USER_TITLE_STATUS_COLUMNS.USER_ID, userId)
+    .in(USER_TITLE_STATUS_COLUMNS.TMDB_ID, tmdbIds);
+}

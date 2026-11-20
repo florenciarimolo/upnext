@@ -185,7 +185,7 @@ import AuthForm from './AuthForm.vue';
 import IconArrowLeft from './icons/IconArrowLeft.vue';
 import EmptyState from './EmptyState.vue';
 import { getSession } from '@/services/auth';
-import { getUserLikedTitle, getTitleStatus } from '@/services/userTitleStatus';
+import { getUserLikedTitle, getTitleStatuses } from '@/services/userTitleStatus';
 import { useTitleStatusAction } from '@/composables/useTitleStatusAction';
 import { useRouteWithLang } from '@/composables/useRouteWithLang';
 import { useViewMode } from '@/composables/useViewMode';
@@ -242,43 +242,30 @@ const loadTitleStatuses = async () => {
       return;
     }
 
-    // Load statuses for all items in parallel
-    const statusPromises = props.items.map(async (item) => {
-      if (!item.tmdb_id) return null;
+    const tmdbIds = props.items
+      .map((item) => item.tmdb_id)
+      .filter((tmdbId): tmdbId is number => typeof tmdbId === 'number');
 
-      try {
-        const { data: titleStatus } = await getTitleStatus(
-          userId,
-          item.tmdb_id
-        );
-        const { data: likedTitle } = await getUserLikedTitle(
-          userId,
-          item.tmdb_id
-        );
+    const { data: rows, error: statusError } = await getTitleStatuses(
+      userId,
+      tmdbIds
+    );
 
-        return {
-          tmdbId: item.tmdb_id,
-          status: titleStatus?.status || null,
-          liked: !!likedTitle,
-        };
-      } catch (error) {
-        const { logError } = useLogger();
-        logError('[DiscoverListDetail] Error loading status', error as Error, {
-          tmdbId: item.tmdb_id,
-        });
-        return null;
-      }
-    });
+    if (statusError) {
+      throw statusError;
+    }
 
-    const results = await Promise.all(statusPromises);
-    results.forEach((result) => {
-      if (result) {
-        titleStatuses.value.set(result.tmdbId, {
-          status: result.status,
-          liked: result.liked,
-        });
-      }
-    });
+    const nextStatuses = new Map<
+      number,
+      { liked: boolean; status: string | null }
+    >();
+    for (const row of rows || []) {
+      nextStatuses.set(row.tmdb_id, {
+        status: row.status || null,
+        liked: !!row.liked,
+      });
+    }
+    titleStatuses.value = nextStatuses;
   } catch (error) {
     const { logError } = useLogger();
     logError(
@@ -292,6 +279,9 @@ const loadTitleStatuses = async () => {
 watch(
   () => props.items,
   async () => {
+    if (import.meta.server) {
+      return;
+    }
     if (props.items && props.items.length > 0) {
       await loadTitleStatuses();
     }
