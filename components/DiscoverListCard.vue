@@ -46,6 +46,8 @@
               v-if="poster"
               :src="getPosterUrl(poster)"
               :alt="`${list.title} preview ${index + 1}`"
+              width="48"
+              height="64"
               class="w-full h-full object-cover"
             />
             <div
@@ -100,7 +102,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w92';
 
 // Get routeWithLang helper to build routes with language prefix
 const { routeWithLang } = useRouteWithLang();

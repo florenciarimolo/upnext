@@ -15,8 +15,10 @@
         :title="provider.provider_name"
       >
         <img
-          :src="`https://image.tmdb.org/t/p/w300${provider.logo_path}`"
+          :src="`https://image.tmdb.org/t/p/w45${provider.logo_path}`"
           :alt="provider.provider_name"
+          width="40"
+          height="40"
           class="inline-block object-cover w-10 h-10 rounded shadow-md md:w-12 md:h-12 shadow-secondary/20 cursor-pointer"
         />
       </a>

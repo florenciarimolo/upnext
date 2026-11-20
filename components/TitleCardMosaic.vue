@@ -70,6 +70,8 @@
           :key="provider.provider_id"
           :src="`https://image.tmdb.org/t/p/w45${provider.logo_path}`"
           :alt="provider.provider_name"
+          width="16"
+          height="16"
           class="object-contain w-4 h-4 md:w-8 md:h-8 rounded"
           :title="provider.provider_name"
         />

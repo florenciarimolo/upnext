@@ -71,8 +71,10 @@
                       >
                         <img
                           v-if="episode.still_path"
-                          :src="`https://image.tmdb.org/t/p/w500${episode.still_path}`"
+                          :src="`https://image.tmdb.org/t/p/w300${episode.still_path}`"
                           :alt="$t('media.posterOf', { title: episode.name })"
+                          width="128"
+                          height="72"
                           class="object-cover w-full h-full"
                           loading="lazy"
                           decoding="async"
@@ -165,6 +167,7 @@
                 <TitleCard
                   :title="episode.name"
                   :poster-path="episode.still_path"
+                  poster-size="w500"
                   aspect-ratio="video"
                   :show-content="true"
                   :show-type="false"

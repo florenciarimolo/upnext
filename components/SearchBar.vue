@@ -88,6 +88,8 @@
                 v-if="result.poster_path"
                 :src="`https://image.tmdb.org/t/p/w92${result.poster_path}`"
                 :alt="getTitle(result)"
+                width="48"
+                height="64"
                 class="object-cover w-full h-full"
                 loading="lazy"
               />

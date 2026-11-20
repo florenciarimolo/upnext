@@ -15,8 +15,10 @@
     <div class="overflow-hidden w-full h-full rounded-2xl">
       <img
         v-if="posterPath"
-        :src="`https://image.tmdb.org/t/p/w500${posterPath}`"
+        :src="`https://image.tmdb.org/t/p/w154${posterPath}`"
         :alt="imageAlt"
+        width="80"
+        height="120"
         class="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
         decoding="async"
@@ -54,8 +56,10 @@
     <div class="overflow-hidden w-full h-full rounded-2xl">
       <img
         v-if="posterPath"
-        :src="`https://image.tmdb.org/t/p/w500${posterPath}`"
+        :src="`https://image.tmdb.org/t/p/w154${posterPath}`"
         :alt="imageAlt"
+        width="80"
+        height="120"
         class="object-cover w-full h-full"
         loading="lazy"
         decoding="async"

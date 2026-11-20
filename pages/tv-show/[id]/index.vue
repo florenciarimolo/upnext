@@ -74,10 +74,10 @@
                   >
                     <img
                       v-if="season.poster_path"
-                      :src="`https://image.tmdb.org/t/p/w500${season.poster_path}`"
+                      :src="`https://image.tmdb.org/t/p/w342${season.poster_path}`"
                       :alt="$t('media.posterOf', { title: season.name })"
-                      width="500"
-                      height="750"
+                      width="342"
+                      height="513"
                       class="object-cover w-full h-full transition-transform duration-300 motion-reduce:transition-none group-hover:scale-105 motion-reduce:group-hover:scale-100"
                       loading="lazy"
                       decoding="async"

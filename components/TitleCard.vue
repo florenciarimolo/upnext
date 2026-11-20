@@ -35,8 +35,10 @@
           ]"
         >
           <img
-            :src="`https://image.tmdb.org/t/p/w500${computedPosterPath}`"
+            :src="`https://image.tmdb.org/t/p/${posterSize}${computedPosterPath}`"
             :alt="computedImageAlt"
+            :width="aspectRatio === 'video' ? 16 : 2"
+            :height="aspectRatio === 'video' ? 9 : 3"
             :class="[
               'object-cover w-full h-full transition-transform duration-300',
               hasValidLink ? 'group-hover:scale-105' : '',
@@ -195,6 +197,8 @@
                 :key="provider.provider_id"
                 :src="`https://image.tmdb.org/t/p/w45${provider.logo_path}`"
                 :alt="provider.provider_name"
+                width="16"
+                height="16"
                 class="object-contain w-4 h-4 md:w-8 md:h-8 rounded"
                 :title="provider.provider_name"
               />
@@ -235,6 +239,7 @@ interface Props {
 
   // Optional display
   posterPath?: string | null;
+  posterSize?: 'w154' | 'w342' | 'w500';
   aspectRatio?: 'poster' | 'video';
   showType?: boolean;
   type?: typeof MEDIA_TYPE.MOVIE | typeof MEDIA_TYPE.TV;
@@ -270,6 +275,7 @@ const props = withDefaults(defineProps<Props>(), {
   linkTo: undefined,
   recommendation: undefined,
   posterPath: undefined,
+  posterSize: 'w342',
   aspectRatio: 'poster',
   showType: true,
   type: undefined,
